@@ -2,6 +2,15 @@
 """
 Interaction Logger for Claude Code
 Appends user prompts and Claude responses to a persistent JSONL history file.
+
+Log file location (in priority order):
+  1. INTERACTION_LOG_FILE env var  — absolute path to log file
+  2. INTERACTION_LOG_DIR env var   — directory to write interaction_history.jsonl into
+  3. Current working directory     — writes .interaction_history.jsonl in cwd
+
+Session file location:
+  1. INTERACTION_LOG_DIR env var   — same dir as log file
+  2. Current working directory
 """
 
 import argparse
@@ -18,9 +27,23 @@ from pathlib import Path
 
 # ── Config ──────────────────────────────────────────────────────────────────
 
-DEFAULT_LOG_FILE = Path.home() / ".claude" / "interaction_history.jsonl"
-SESSION_FILE = Path.home() / ".claude" / ".current_session"
 SESSION_MAX_AGE_SECONDS = 8 * 60 * 60  # 8 hours
+
+
+def _resolve_log_file() -> Path:
+    if os.environ.get("INTERACTION_LOG_FILE"):
+        return Path(os.environ["INTERACTION_LOG_FILE"])
+    if os.environ.get("INTERACTION_LOG_DIR"):
+        return Path(os.environ["INTERACTION_LOG_DIR"]) / "interaction_history.jsonl"
+    return Path(os.getcwd()) / ".interaction_history.jsonl"
+
+
+def _resolve_session_file() -> Path:
+    if os.environ.get("INTERACTION_LOG_FILE"):
+        return Path(os.environ["INTERACTION_LOG_FILE"]).parent / ".interaction_session"
+    if os.environ.get("INTERACTION_LOG_DIR"):
+        return Path(os.environ["INTERACTION_LOG_DIR"]) / ".interaction_session"
+    return Path(os.getcwd()) / ".interaction_session"
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -30,7 +53,6 @@ def _short_id(length: int = 8) -> str:
 
 
 def _uuid() -> str:
-    """Simple UUID v4 without external dependencies."""
     import uuid
     return str(uuid.uuid4())
 
@@ -40,22 +62,20 @@ def _now_iso() -> str:
 
 
 def get_or_create_session(force_new: bool = False) -> str:
-    """Return the current session ID, creating a new one if needed."""
-    SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
+    session_file = _resolve_session_file()
+    session_file.parent.mkdir(parents=True, exist_ok=True)
 
-    if not force_new and SESSION_FILE.exists():
-        age = time.time() - SESSION_FILE.stat().st_mtime
+    if not force_new and session_file.exists():
+        age = time.time() - session_file.stat().st_mtime
         if age < SESSION_MAX_AGE_SECONDS:
-            return SESSION_FILE.read_text().strip()
+            return session_file.read_text().strip()
 
-    # Create a new session
     session_id = _short_id(8)
-    SESSION_FILE.write_text(session_id)
+    session_file.write_text(session_id)
     return session_id
 
 
 def get_next_sequence(log_path: Path, session_id: str) -> int:
-    """Scan log file to find the next sequence number for this session."""
     if not log_path.exists():
         return 1
     seq = 0
@@ -77,7 +97,6 @@ def get_next_sequence(log_path: Path, session_id: str) -> int:
 
 
 def append_entry(log_path: Path, entry: dict) -> None:
-    """Append a single JSON entry to the log file with file locking."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with open(log_path, "a", encoding="utf-8") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
@@ -97,13 +116,12 @@ def get_context() -> dict:
 # ── Commands ──────────────────────────────────────────────────────────────────
 
 def cmd_log(args) -> None:
-    log_path = Path(os.environ.get("CLAUDE_INTERACTION_LOG", DEFAULT_LOG_FILE))
+    log_path = _resolve_log_file()
     session_id = get_or_create_session()
     sequence = get_next_sequence(log_path, session_id)
 
     content = args.content
     if not content:
-        # Read from stdin if no content arg
         content = sys.stdin.read()
 
     entry = {
@@ -126,9 +144,9 @@ def cmd_new_session(args) -> None:
 
 
 def cmd_view(args) -> None:
-    log_path = Path(os.environ.get("CLAUDE_INTERACTION_LOG", DEFAULT_LOG_FILE))
+    log_path = _resolve_log_file()
     if not log_path.exists():
-        print("No interaction history found.")
+        print(f"No interaction history found at: {log_path}")
         return
 
     entries = []
@@ -153,7 +171,6 @@ def cmd_view(args) -> None:
         session = e.get("session_id", "?")
         seq = e.get("sequence", "?")
         content = e.get("content", "")
-        # Truncate long content for display
         if len(content) > 300 and not args.full:
             content = content[:300] + "… [truncated, use --full to see all]"
         print(f"\n{'─'*60}")
@@ -167,9 +184,9 @@ def cmd_view(args) -> None:
 
 
 def cmd_search(args) -> None:
-    log_path = Path(os.environ.get("CLAUDE_INTERACTION_LOG", DEFAULT_LOG_FILE))
+    log_path = _resolve_log_file()
     if not log_path.exists():
-        print("No interaction history found.")
+        print(f"No interaction history found at: {log_path}")
         return
 
     keyword = args.search.lower()
@@ -203,9 +220,9 @@ def cmd_search(args) -> None:
 
 
 def cmd_stats(args) -> None:
-    log_path = Path(os.environ.get("CLAUDE_INTERACTION_LOG", DEFAULT_LOG_FILE))
+    log_path = _resolve_log_file()
     if not log_path.exists():
-        print("No interaction history found.")
+        print(f"No interaction history found at: {log_path}")
         return
 
     sessions = {}
@@ -241,9 +258,6 @@ def cmd_stats(args) -> None:
 
 def main():
     parser = argparse.ArgumentParser(description="Claude Code Interaction Logger")
-    subparsers = parser.add_subparsers(dest="command")
-
-    # Default: log a single entry (also works via top-level flags for convenience)
     parser.add_argument("--role", choices=["user", "assistant"], help="Role of the entry to log")
     parser.add_argument("--content", type=str, default="", help="Content to log (or pass via stdin)")
     parser.add_argument("--new-session", action="store_true", help="Force start a new session")

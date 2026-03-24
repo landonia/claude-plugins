@@ -1,7 +1,9 @@
 #!/bin/bash
 INPUT=$(cat)
-TRANSCRIPT=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('transcript_path',''))" 2>/dev/null)
-if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
+TRANSCRIPT=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('transcript_path',''))" 2>/dev/null)
+CWD=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('cwd',''))" 2>/dev/null)
+
+if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] && [ -n "$CWD" ]; then
   RESPONSE=$(python3 -c "
 import json
 entries = []
@@ -20,7 +22,7 @@ for entry in reversed(entries):
             break
 " 2>/dev/null)
   if [ -n "$RESPONSE" ]; then
-    python3 "${CLAUDE_PLUGIN_ROOT}/skills/interaction-logger/scripts/log_interaction.py" \
+    cd "$CWD" && python3 "${CLAUDE_PLUGIN_ROOT}/skills/interaction-logger/scripts/log_interaction.py" \
       --role assistant --content "$RESPONSE" 2>/dev/null
   fi
 fi
