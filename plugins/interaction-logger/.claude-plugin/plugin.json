@@ -1,0 +1,5 @@
+{
+  "name": "interaction-logger",
+  "description": "Logs every Claude Code prompt and response to a local JSONL history file with timestamps and session IDs.",
+  "version": "1.0.0"
+}
