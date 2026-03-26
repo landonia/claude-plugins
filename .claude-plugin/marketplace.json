@@ -8,11 +8,7 @@
     {
       "name": "interaction-logger",
       "description": "Logs every Claude Code prompt and response to a local JSONL history file with timestamps and session IDs, so you can trace which input led to which output.",
-      "source": {
-        "source": "github",
-        "repo": "landonia/claude-plugins",
-        "path": "./plugins/interaction-logger"
-      }
+      "source": "./plugins/interaction-logger"
     }
   ]
 }
