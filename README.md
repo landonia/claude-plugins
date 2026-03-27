@@ -19,7 +19,3 @@ Logs every Claude Code prompt and response to `~/.claude/interaction_history.jso
 /plugin install interaction-logger@landonia-plugins
 ```
 
-If hooks do not register automatically, run the install script from your project directory as a fallback:
-```bash
-bash /path/to/claude-plugins/scripts/install-plugin.sh interaction-logger
-```
