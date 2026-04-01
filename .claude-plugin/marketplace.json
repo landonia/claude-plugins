@@ -9,6 +9,11 @@
       "name": "interaction-logger",
       "description": "Logs every Claude Code prompt and response to a local JSONL history file with timestamps and session IDs, so you can trace which input led to which output.",
       "source": "./plugins/interaction-logger"
+    },
+    {
+      "name": "java-guidelines",
+      "description": "Injects Java coding patterns, conventions, and best practices into the agent context whenever Java code is being written or reviewed.",
+      "source": "./plugins/java-guidelines"
     }
   ]
 }

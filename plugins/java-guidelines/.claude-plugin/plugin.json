@@ -1,0 +1,5 @@
+{
+  "name": "java-guidelines",
+  "description": "Injects Java coding patterns, conventions, and best practices into the agent context whenever Java code is being written or reviewed.",
+  "version": "1.0.0"
+}
