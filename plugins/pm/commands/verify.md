@@ -100,17 +100,36 @@ If borderline, lean toward REJECT and ask for one more pass. A rejection with co
 
 Rejection notes MUST be specific enough that a NEW executor with no memory of the prior attempt could pick up and finish the work.
 
-## Step 8 — Hand off
+## Step 8 — Jira sync (optional, best-effort)
+
+After updating the task file, sync to Jira ONLY if all of these are true:
+
+1. `.pm/<slug>/.jira.yml` exists.
+2. `command -v acli` and `acli auth status` succeed. Otherwise print once: `Jira sync skipped — acli not available. Run /pm:jira-init for setup.` and skip.
+3. The task's `jira_key` is non-empty. Otherwise skip silently.
+
+If enabled, load `status_mapping`:
+
+- **On ACCEPT:** transition the issue to `status_mapping.verify_accept`. No-op if already in that status.
+- **On REJECT:**
+  - Transition the issue to `status_mapping.verify_reject`.
+  - Add a Jira comment with the body of the newly-appended `## Verifier notes — <date> — REJECTED` section (everything under it: Summary, What needs to change, Acceptance criteria check, Tests, Notes for next executor). This gives Jira watchers actionable context without having to read the pm task file.
+
+On any `acli` error, print ONE line: `Jira sync skipped for task <NNN> (acli error: <message>). Use /pm:jira-sync to retry.` Continue — do NOT roll back the verifier verdict.
+
+## Step 9 — Hand off
 
 **On ACCEPT:**
 ```
 Task <NNN> → status: done.
+Jira: <jira_key> → <jira status>   (or "—" if not linked, or "skipped")
 Next ready task: <NNN-2> (or "all tasks done — consider /pm:release <slug>").
 ```
 
 **On REJECT:**
 ```
 Task <NNN> → status: rejected.
+Jira: <jira_key> → <jira status>   (or "—" if not linked, or "skipped")
 Next: /pm:execute <slug> <NNN>   (will pick up Verifier notes and re-attempt)
 ```
 

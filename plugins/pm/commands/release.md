@@ -96,11 +96,27 @@ If `.pm/<slug>/CHANGELOG.md` doesn't exist, ask the user if they want one create
 <One-paragraph summary from RELEASE.md "What shipped".>
 ```
 
-## Step 7 — Hand off
+## Step 7 — Close the Jira epic (optional, best-effort)
+
+Run this block ONLY if all of these are true:
+
+1. `.pm/<slug>/.jira.yml` exists.
+2. `command -v acli` and `acli auth status` succeed. Otherwise print once: `Jira sync skipped — acli not available. Run /pm:jira-init for setup.` and skip.
+3. The released version's `goals.md` has a non-empty `jira_epic`. Otherwise skip silently.
+
+If enabled, load `status_mapping` from `.jira.yml`, then:
+
+- **Transition the epic** to `status_mapping.release_epic`.
+- **Add a comment** on the epic with the release tag and the "What shipped" paragraph from RELEASE.md.
+
+On any `acli` error, print ONE line: `Jira epic closure skipped (acli error: <message>). You can close the epic manually or use /pm:jira-sync later.` Continue — the release is complete on the pm side regardless.
+
+## Step 8 — Hand off
 
 Print:
 - Path to RELEASE.md.
 - Path to CHANGELOG.md (if created/updated).
+- If epic was closed: `Jira epic <EPIC-KEY> → <status>.`
 - Next-step hint: `/pm:version <slug> v<N+1>` to start the next milestone (if more work is expected), or "Project complete — set `status: archived` in prd.md when ready to file it away."
 
 ## Output discipline

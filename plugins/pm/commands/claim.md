@@ -86,13 +86,29 @@ git push -u origin <branch>
 
 If push fails (typically because the branch diverged on the remote), STOP and surface the error to the user. Don't force-push. The user resolves and re-runs.
 
-## Step 7 — Print confirmation and next-step hint
+## Step 7 — Jira sync (optional, best-effort)
+
+Run this block ONLY if all of these are true; otherwise skip silently or with a single warning:
+
+1. `.pm/<slug>/.jira.yml` exists.
+2. `command -v acli` succeeds AND `acli auth status` succeeds. If either fails, print once: `Jira sync skipped — acli not available. Run /pm:jira-init for setup.` and skip the rest of this step.
+3. The task's `jira_key` is non-empty. If empty, skip silently (task is not linked to a Jira issue).
+
+If enabled, load `status_mapping` and the extras from `.jira.yml`, then:
+
+- **Transition the issue** to `status_mapping.claim`. Use `acli` to perform the workflow transition. If the issue is already in that status, no-op silently.
+- **If `sync_assignee_on_claim` is `true`:** look up the Jira account by the current `git config user.email` and set the issue's assignee. If no Jira account matches the email, print one line: `Jira assignee not set for task <NNN> — no account matches <email>.` and continue.
+
+On any `acli` error during this step, print ONE line: `Jira sync skipped for task <NNN> (acli error: <message>). Use /pm:jira-sync to retry.` Do NOT roll back any pm state. The claim succeeded on the pm side; the Jira side is just a mirror.
+
+## Step 8 — Print confirmation and next-step hint
 
 ```
 Claimed task <NNN> — <title>
   Assignee:  <name> <email>
   Branch:    <branch>  (pushed to origin)
   Status:    in-progress
+  Jira:      <jira_key> → <jira status>   (or "—" if not linked, or "skipped" on error)
 
 Next: /pm:execute <slug> <NNN>
 ```

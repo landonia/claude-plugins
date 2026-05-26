@@ -58,6 +58,8 @@ Each task file is markdown with YAML frontmatter capturing `status`, `depends_on
 
 `/pm:claim` is optional for solo work and recommended for multi-developer teams — it makes your "I'm working on this" visible to teammates via git so two people don't double-implement the same task. `/pm:complete` opens the PR after `/pm:verify` accepts, and `/pm:resume` brings you back to a task's branch when you need to (e.g. PR feedback). You can skip stages (`/pm:plan` will warn if there's no research but proceed) — the structure is opinionated, not rigid.
 
+*Optional: if Jira is enabled for the project (via `/pm:jira-init`), the same flow also pushes status to your Jira board — `/pm:claim` moves the linked issue to In Progress, `/pm:verify` to In Review, `/pm:complete` adds the PR URL as a comment, `/pm:version` creates a per-version epic, and `/pm:release` closes it. See [Jira integration](#jira-integration-optional) below.*
+
 ---
 
 ## Commands
@@ -208,6 +210,80 @@ Closes out a version. Refuses to release if any task isn't `done`. Asks for the 
 
 ---
 
+### Jira integration (optional)
+
+Pm can optionally mirror task state to a Jira board. Enable per-project via `/pm:jira-init`; once enabled, the core lifecycle commands (`/pm:claim`, `/pm:verify`, `/pm:complete`, `/pm:version`, `/pm:release`) push status transitions and comments to Jira automatically on a **best-effort** basis — pm task state is always the source of truth, and Jira errors never block the pm flow.
+
+#### `/pm:jira-init [slug]`
+Interactive setup. Verifies `acli` (Atlassian's official CLI) is installed and authenticated, then writes `.pm/<slug>/.jira.yml` capturing site, project key, default issue types, and status-name mapping. Status names are seeded from your Jira project's actual workflow but fully editable so any custom workflow works. Offers to create the active version's epic and backfill Jira issues for existing tasks.
+
+```
+/pm:jira-init usage-billing
+```
+
+Requires `acli` — install from <https://developer.atlassian.com/cloud/acli/> and run `acli auth login` first.
+
+#### `/pm:jira-link <slug> [task-id] <ISSUE-KEY>`
+Attach an existing Jira issue (e.g. created in a planning meeting) to a pm task. Validates the key, refuses to overwrite an existing link without confirmation, and pushes the current pm status to Jira after linking.
+
+```
+/pm:jira-link usage-billing 003 PROJ-127
+```
+
+#### `/pm:jira-create <slug> [task-id]`
+Create new Jira issue(s) from pm task(s). With a task id, creates one. Without, offers to batch-create issues for every unlinked task in the active version. The Jira issue's summary = task title, description = task body, parent = the active version's epic (if set), labels include the project slug and version.
+
+```
+/pm:jira-create usage-billing            # batch — creates issues for all unlinked tasks
+/pm:jira-create usage-billing 005        # just task 005
+```
+
+#### `/pm:jira-sync [slug]`
+Reconcile Jira with pm. For every linked task, push the current pm status to Jira. Useful after a sync failure, on first-run when enabling Jira on an existing project, or when Jira state has drifted (manual edits, bot interference). Read-only on pm — Jira is the side that moves.
+
+```
+/pm:jira-sync usage-billing
+```
+
+#### What gets synced when
+
+| pm action            | Jira action                                                              |
+|----------------------|--------------------------------------------------------------------------|
+| `/pm:claim`          | Transition issue → `status_mapping.claim` (e.g. "In Progress"); set assignee by email lookup if enabled |
+| `/pm:verify` accept  | Transition issue → `status_mapping.verify_accept` (e.g. "In Review")     |
+| `/pm:verify` reject  | Transition issue → `status_mapping.verify_reject`; add comment with Verifier notes |
+| `/pm:complete`       | Transition issue → `status_mapping.complete`; comment with PR URL        |
+| `/pm:version vN`     | Create Jira epic for vN; record `jira_epic` in `vN/goals.md`             |
+| `/pm:release`        | Transition the version's epic → `status_mapping.release_epic` (e.g. "Done") with release-tag comment |
+
+#### `.jira.yml` example
+
+```yaml
+site: company.atlassian.net
+project_key: PROJ
+default_issue_type: Story
+epic_issue_type: Epic
+status_mapping:
+  claim: "In Progress"
+  verify_accept: "In Review"
+  verify_reject: "In Progress"
+  complete: "In Review"
+  release_epic: "Done"
+post_pr_comment_on_complete: true
+sync_assignee_on_claim: true
+```
+
+The file is committable (no credentials live in it — `acli auth login` handles those). Adapt the status names to match your team's workflow; everything downstream reads from this file.
+
+#### Failure handling
+
+- If `.pm/<slug>/.jira.yml` doesn't exist, nothing happens. Jira is fully opt-in per project.
+- If `acli` is missing or not authenticated when a sync would happen, a single one-line warning prints (`Jira sync skipped — acli not available. Run /pm:jira-init for setup.`) and the pm command continues.
+- If an `acli` call fails for any other reason, a one-line warning prints naming the affected task and the error, and pm continues. Use `/pm:jira-sync` later to retry.
+- Pm state is never rolled back on Jira failure.
+
+---
+
 ### Read-only utilities
 
 #### `/pm:status [slug]`
@@ -254,6 +330,13 @@ The orchestrator picks `security-architect`, `data-modeler`, `integration-engine
 /pm:plan usage-billing
 ```
 You get 14 ordered tasks. Task 001 sets up Stripe webhooks scaffolding, 002 adds the customer/subscription tables, 003 wires up checkout flow, etc. Dependencies are explicit (004 depends on 002, 003).
+
+**3a. (Optional) Wire up Jira.**
+```
+/pm:jira-init usage-billing              # interactive — sets up .pm/usage-billing/.jira.yml + v1 epic
+/pm:jira-create usage-billing            # batch-creates a Jira issue for each task
+```
+From here on, every claim/verify/complete also pushes status to your Jira board. Skip this step entirely if you don't use Jira.
 
 **4. Execute, verify, complete, repeat.**
 ```
@@ -302,6 +385,7 @@ Mini-interview captures v2 scope (metered billing, annual contracts). The active
 - **Use `/pm:amend` not edits.** If you discover the PRD was wrong, amending preserves the audit trail. Direct edits to `prd.md` work too but lose the "why" of the change.
 - **Versions are for shipped milestones, not branches.** If you're exploring a risky direction, a git branch is the right tool. A new `vN` folder is appropriate when you've shipped vN-1 and are planning the next deliverable cut.
 - **Brownfield projects** auto-include the `existing-codebase-archaeologist` persona during research, which surfaces the patterns and integration points the new work must respect.
+- **Jira sync is best-effort** — pm task state is the source of truth on disk. If a transition silently fails (acli down, permission gap, workflow change), use `/pm:jira-sync` to reconcile. Never reach for git revert because Jira didn't update.
 
 ---
 

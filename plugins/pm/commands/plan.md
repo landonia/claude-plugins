@@ -64,6 +64,7 @@ branch: ""               # set by /pm:claim — pm/<slug>/<NNN>-<task-slug>
 claimed_at: ""           # set by /pm:claim — YYYY-MM-DD
 pr_url: ""               # set by /pm:complete — GitHub PR URL
 completed_at: ""         # set by /pm:complete — YYYY-MM-DD
+jira_key: ""             # set by /pm:jira-link or /pm:jira-create — e.g. "PROJ-123"
 depends_on: []           # list of task ids as strings, e.g. ["001", "002"]
 prd_refs:                # list of section references
   - "prd.md §3.1"
@@ -95,6 +96,7 @@ Print:
 - Count of tasks written.
 - The first ready task (no unmet deps).
 - Next-step hint: `/pm:execute <slug>` (auto-picks the first ready task) or `/pm:next <slug>` to peek.
+- If `.pm/<slug>/.jira.yml` exists (Jira is enabled for this project): also print `Tip: /pm:jira-create <slug>` so the user can batch-create Jira issues for the new tasks.
 
 ## Output discipline
 - Don't generate more than ~25 tasks in one pass — if the work is bigger, group into phases and tell the user some tasks are "phase 2" placeholders that need their own decomposition later.

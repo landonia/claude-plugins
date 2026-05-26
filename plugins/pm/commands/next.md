@@ -36,6 +36,7 @@ Status: <pending|rejected>
 Depends on: <list of ids or "—">
 PRD refs: <list>
 Research refs: <list>
+Jira: <jira_key>  (or "—" if not linked; only shown when .pm/<slug>/.jira.yml exists)
 Acceptance criteria:
   - <criterion 1>
   - <criterion 2>
@@ -54,11 +55,11 @@ After printing the next ready task, ALSO print any tasks currently `in-progress`
 
 ```
 Currently in progress:
-  002  Add billing webhook handler    Alice <a@example.com>  branch pm/<slug>/002-billing-webhook  since 2026-05-22
-  005  Wire up dunning emails         Bob <b@example.com>    branch pm/<slug>/005-dunning-emails   since 2026-05-23
+  002  Add billing webhook handler    Alice <a@example.com>  branch pm/<slug>/002-billing-webhook  since 2026-05-22  PROJ-123
+  005  Wire up dunning emails         Bob <b@example.com>    branch pm/<slug>/005-dunning-emails   since 2026-05-23  PROJ-127
 ```
 
-Omit this section entirely if no tasks are `in-progress`.
+Omit this section entirely if no tasks are `in-progress`. Append the `jira_key` column only when `.pm/<slug>/.jira.yml` exists; show `—` for tasks without a key.
 
 ## Output discipline
 - Read-only.

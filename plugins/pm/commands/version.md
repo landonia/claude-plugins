@@ -54,6 +54,7 @@ version: <new-version>
 status: planning
 created: <YYYY-MM-DD>
 preceded_by: <prior-version-or-empty>
+jira_epic: ""                 # set in Step 6.5 if Jira is enabled
 ---
 
 # <new-version> — Goals
@@ -87,11 +88,31 @@ In `.pm/<slug>/prd.md`:
 
 Show the drafted `goals.md` to the user before writing. Apply edits.
 
+## Step 6.5 — Create the Jira epic (optional, best-effort)
+
+Run this block ONLY if all of these are true:
+
+1. `.pm/<slug>/.jira.yml` exists.
+2. `command -v acli` and `acli auth status` succeed. Otherwise print once: `Jira sync skipped — acli not available. Run /pm:jira-init for setup.` and skip.
+
+If enabled, load `site`, `project_key`, and `epic_issue_type` from `.jira.yml`, then:
+
+- Create a Jira epic via `acli` with:
+  - **Summary** = `"<project title>" — <new-version>` (project title from prd.md frontmatter).
+  - **Description** = the body of the drafted `goals.md` (everything below the frontmatter).
+  - **Issue type** = `epic_issue_type`.
+  - **Labels** = `["pm-<slug>", "<new-version>"]`.
+- Capture the new epic key from `acli`'s output.
+- Update `<new-version>/goals.md` frontmatter `jira_epic: <EPIC-KEY>`.
+
+On any `acli` error, print ONE line: `Jira epic creation skipped (acli error: <message>). You can create the epic later via /pm:jira-init or directly in Jira, then set jira_epic in goals.md.` Continue — the version scaffold still succeeds without an epic.
+
 ## Step 7 — Hand off
 
 Print:
 - Paths created.
 - The active version is now `<new-version>`.
+- If Jira epic was created: `Jira epic: <EPIC-KEY>   https://<site>/browse/<EPIC-KEY>`.
 - Next-step hint: `/pm:research <slug>` (recommended for any non-trivial version), or `/pm:plan <slug>` to go straight to tasks if the scope is well-understood.
 
 ## Output discipline

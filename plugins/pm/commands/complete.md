@@ -97,7 +97,26 @@ If `--checkout-main` was passed:
 
 If not passed, stay on the task branch (the user may need to address PR comments).
 
-## Step 8 — Print confirmation and next-step hint
+## Step 8 — Jira sync (optional, best-effort)
+
+Run this block ONLY if all of these are true:
+
+1. `.pm/<slug>/.jira.yml` exists.
+2. `command -v acli` and `acli auth status` succeed. Otherwise print once: `Jira sync skipped — acli not available. Run /pm:jira-init for setup.` and skip.
+3. The task's `jira_key` is non-empty. Otherwise skip silently.
+
+If enabled, load `status_mapping` and `post_pr_comment_on_complete` from `.jira.yml`:
+
+- **Transition the issue** to `status_mapping.complete`. No-op if already there.
+- **If `post_pr_comment_on_complete` is `true`:** add a Jira comment with the PR URL and a short note. Format:
+  ```
+  PR opened for this issue: <pr_url>
+  ```
+  Skip the comment if a comment with this PR URL is already present on the issue (idempotency — `/pm:complete` may be re-run if verify rejects mid-PR).
+
+On any `acli` error, print ONE line: `Jira sync skipped for task <NNN> (acli error: <message>). Use /pm:jira-sync to retry.` Continue — do NOT roll back the PR or any pm state.
+
+## Step 9 — Print confirmation and next-step hint
 
 ```
 Task <NNN> — complete.
@@ -105,6 +124,7 @@ Task <NNN> — complete.
   Branch:    <branch>  (still checked out  | switched to main)
   Status:    done
   Recorded:  pr_url, completed_at
+  Jira:      <jira_key> → <jira status>   (or "—" if not linked, or "skipped")
 
 Next: human review on the PR. After merge:
   /pm:claim <slug>     to pick up the next task
