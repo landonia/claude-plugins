@@ -48,13 +48,15 @@ Each task file is markdown with YAML frontmatter capturing `status`, `depends_on
 ### The flow
 
 ```
-/pm-prd  →  /pm-research  →  /pm-plan  →  /pm-claim  →  /pm-execute  →  /pm-verify
-   ▲                                                                          │
-   │                                                                          ▼ (rejected loops back)
-   /pm-amend  ──→  /pm-replan                                        /pm-release  →  /pm-version v2
+/pm-prd  →  /pm-research  →  /pm-plan  →  /pm-claim  →  /pm-execute  →  /pm-verify  →  /pm-complete
+   ▲                                                          ▲                  │              │
+   │                                                          │                  ▼              ▼
+   │                                                       /pm-resume       (rejected)    PR opened, merge
+   │                                                                                            │
+   /pm-amend  ──→  /pm-replan                                                /pm-release  →  /pm-version v2
 ```
 
-`/pm-claim` is optional for solo work and recommended for multi-developer teams — it makes your "I'm working on this" visible to teammates via git so two people don't double-implement the same task. You can skip stages (`/pm-plan` will warn if there's no research but proceed) — the structure is opinionated, not rigid.
+`/pm-claim` is optional for solo work and recommended for multi-developer teams — it makes your "I'm working on this" visible to teammates via git so two people don't double-implement the same task. `/pm-complete` opens the PR after `/pm-verify` accepts, and `/pm-resume` brings you back to a task's branch when you need to (e.g. PR feedback). You can skip stages (`/pm-plan` will warn if there's no research but proceed) — the structure is opinionated, not rigid.
 
 ---
 
@@ -162,6 +164,27 @@ A Senior QA / Tech Lead persona that **independently** verifies the work. Reads 
 On accept: status `done`, brief accepted note appended.
 On reject: status `rejected`, plus a `## Verifier notes` section listing **specific, actionable gaps** so the next `/pm-execute` (which may be a different session entirely) can pick up cold and finish the work correctly.
 
+#### `/pm-complete [slug] [task-id] [--checkout-main]`
+Marks a verified task as complete and opens the PR. Commits any remaining implementation changes, pushes the branch, opens a PR via `gh pr create` with the task file as the PR description, and records the PR URL on the task. Refuses if status isn't `done`.
+
+```
+/pm-complete usage-billing                      # auto-picks next done-but-not-PR'd task
+/pm-complete usage-billing 003                  # complete a specific task
+/pm-complete usage-billing 003 --checkout-main  # also pull main and switch to it
+```
+
+By default stays on the task branch so you can address PR feedback. `--checkout-main` is the one-step "I'm done, on to the next task" mode. If a PR already exists for the branch (e.g. you ran `/pm-complete` once, then `/pm-execute` again to address verify rejection), `/pm-complete` just pushes the latest commits — the existing PR updates automatically.
+
+#### `/pm-resume <slug> [task-id]`
+Switches back to a task's branch and pulls latest. Use when you've moved to a different branch (e.g. after `/pm-complete --checkout-main`) and need to come back — typically for PR comments or a post-merge `/pm-verify` rejection.
+
+```
+/pm-resume usage-billing                        # lists your tasks, asks which to resume
+/pm-resume usage-billing 003                    # straight to task 003's branch
+```
+
+Refuses on a dirty working tree (would lose uncommitted work). Prints the task state and a status-aware next-step hint when you arrive — if the task was rejected, it shows the most recent Verifier notes so you know what to fix.
+
 ---
 
 ### Versioning
@@ -232,15 +255,27 @@ The orchestrator picks `security-architect`, `data-modeler`, `integration-engine
 ```
 You get 14 ordered tasks. Task 001 sets up Stripe webhooks scaffolding, 002 adds the customer/subscription tables, 003 wires up checkout flow, etc. Dependencies are explicit (004 depends on 002, 003).
 
-**4. Execute, verify, repeat.**
+**4. Execute, verify, complete, repeat.**
 ```
-/pm-execute usage-billing                # picks 001
-# ... implementation happens, java-guidelines skill triggers automatically ...
+/pm-claim usage-billing                  # claims 001, switches to pm/usage-billing/001-stripe-webhooks
+/pm-execute usage-billing                # implementation happens, java-guidelines skill triggers automatically
 /pm-verify usage-billing                 # accepts 001
-/pm-execute usage-billing                # picks 002
+/pm-complete usage-billing --checkout-main  # opens PR, back on main, ready for next
+
+/pm-claim usage-billing                  # claims 002
+/pm-execute usage-billing
 /pm-verify usage-billing                 # rejects 002 — "schema missing idempotency on webhook event ids"
 /pm-execute usage-billing 002            # re-attempts with verifier notes in hand
 /pm-verify usage-billing                 # accepts
+/pm-complete usage-billing               # opens PR, stay on branch in case of feedback
+```
+
+A reviewer leaves a comment on the 001 PR. You're on the 002 branch:
+```
+/pm-resume usage-billing 001             # back on 001's branch, pulled latest
+# ... fix the issue, commit ...
+git push                                 # PR updates
+/pm-resume usage-billing 002             # back to where you were
 ```
 
 **5. Ship v1.**
@@ -307,6 +342,8 @@ Same as initial planning — one person scaffolds vN with team input.
 | `/pm-claim`           | Any engineer, before executing           |
 | `/pm-execute`         | Any engineer, after `/pm-claim`          |
 | `/pm-verify`          | Executor (fast) or teammate (rigorous)   |
+| `/pm-complete`        | Any engineer, after `/pm-verify` accepts |
+| `/pm-resume`          | Any engineer, to return to a task        |
 | `/pm-amend`           | Lead, via PR                             |
 | `/pm-replan`          | Lead, after amendment is merged          |
 | `/pm-release`         | Lead, once per version                   |
@@ -321,7 +358,7 @@ Same as initial planning — one person scaffolds vN with team input.
 
 ### TL;DR
 
-> Lead does `/pm-prd` → `/pm-research` → `/pm-plan`, opens a PR with the planning artifacts. Engineers run `/pm-claim` to grab a task (creates branch + flips status + pushes), then `/pm-execute` and `/pm-verify`, open a PR with the task file as description, human reviews on top of Claude's verify verdict, merge. Lead handles `/pm-amend`, `/pm-release`, `/pm-version`.
+> Lead does `/pm-prd` → `/pm-research` → `/pm-plan`, opens a PR with the planning artifacts. Engineers run `/pm-claim` to grab a task (creates branch + flips status + pushes), then `/pm-execute`, `/pm-verify`, and `/pm-complete` to open the PR. Human reviews on top of Claude's verify verdict, merges. `/pm-resume` brings you back to a branch when PR feedback needs addressing. Lead handles `/pm-amend`, `/pm-release`, `/pm-version`.
 
 ---
 

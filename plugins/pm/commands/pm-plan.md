@@ -62,6 +62,8 @@ status: pending          # pending | in-progress | done-pending-verify | done | 
 assignee: ""             # set by /pm-claim — "<name> <email>"
 branch: ""               # set by /pm-claim — pm/<slug>/<NNN>-<task-slug>
 claimed_at: ""           # set by /pm-claim — YYYY-MM-DD
+pr_url: ""               # set by /pm-complete — GitHub PR URL
+completed_at: ""         # set by /pm-complete — YYYY-MM-DD
 depends_on: []           # list of task ids as strings, e.g. ["001", "002"]
 prd_refs:                # list of section references
   - "prd.md §3.1"
