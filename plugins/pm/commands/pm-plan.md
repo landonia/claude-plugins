@@ -59,6 +59,9 @@ For each task, write `.pm/<slug>/<active_version>/tasks/<NNN>-<slug>.md` with th
 id: <NNN>
 title: <Title>
 status: pending          # pending | in-progress | done-pending-verify | done | rejected
+assignee: ""             # set by /pm-claim — "<name> <email>"
+branch: ""               # set by /pm-claim — pm/<slug>/<NNN>-<task-slug>
+claimed_at: ""           # set by /pm-claim — YYYY-MM-DD
 depends_on: []           # list of task ids as strings, e.g. ["001", "002"]
 prd_refs:                # list of section references
   - "prd.md §3.1"

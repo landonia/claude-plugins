@@ -23,6 +23,7 @@ Read:
   - Whether `RELEASE.md` exists.
   - Count of research files in `research/` (excluding `_index.md` and `.archive/`).
   - Task counts in `tasks/` by status: pending / in-progress / done-pending-verify / done / rejected.
+- For the **active version**, also collect each task's `assignee`, `branch`, and `claimed_at` fields where present.
 
 Compute "next ready task" for the active version: lowest-id task with status `pending` or `rejected` whose deps are all `done`.
 
@@ -47,9 +48,15 @@ Active version detail (v2):
   Blockers:  task 005 (rejected) — see Verifier notes
              task 007 (pending) blocked by 005
 
-Next ready task: 004 — "Add billing webhook handler"
-Suggested next command: /pm-execute <slug>
+In-progress / claimed tasks:
+  ID   Title                          Assignee              Branch                        Claimed
+  004  Add billing webhook handler    Alice <a@example.com> pm/<slug>/004-billing-webhook 2026-05-22
+
+Next ready task: 006 — "Wire up dunning email templates"
+Suggested next command: /pm-claim <slug>   (then /pm-execute)
 ```
+
+If no tasks have assignees set, omit the "In-progress / claimed tasks" section entirely. If the user is solo (only one assignee value appears across all tasks, matching git config user), still show the section — it's useful for the user to see their own claims.
 
 If the active version has no tasks yet: "Next: /pm-plan <slug>".
 If the active version has no research yet: "Next: /pm-research <slug>".

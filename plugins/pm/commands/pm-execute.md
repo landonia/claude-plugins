@@ -13,6 +13,7 @@ Parse `$ARGUMENTS`:
 - 1 arg that matches a slug → use that project, auto-pick next ready task.
 - 1 arg that's a task id (numeric, 3 digits) → use active project, force that task.
 - 2 args → slug and task id explicitly.
+- `--force` flag (anywhere) → suppress the "claimed by someone else" warning in Step 1.5.
 
 ## Step 1 — Resolve project, version, and task
 
@@ -26,6 +27,26 @@ Same active-project resolution. Read `active_version` from prd.md frontmatter.
 **Explicit task id:**
 - If the requested task's `depends_on` includes a task that isn't `done`, WARN the user and ask whether to proceed anyway (they may have a reason). Default: no.
 - If the task is already `in-progress`, `done-pending-verify`, or `done`, ask the user whether they want to redo it. Default: no.
+
+## Step 1.5 — Honor existing claims (multi-dev)
+
+Read the task's `assignee` frontmatter field.
+
+- If `assignee` is empty → proceed normally.
+- If `assignee` matches the current `git config user.name` + `user.email` → proceed (you own this).
+- If `assignee` is set to someone else AND `--force` was NOT passed → WARN clearly:
+  ```
+  Task <NNN> is claimed by <assignee> (since <claimed_at>) on branch <branch>.
+  Running /pm-execute on someone else's task can produce duplicate work and merge conflicts.
+  Options:
+    - /pm-claim <slug> <NNN> --force   (take over the claim cleanly)
+    - /pm-execute <slug> <NNN> --force (proceed without claiming — only if you've coordinated)
+    - Pick a different task: /pm-next <slug>
+  ```
+  Refuse to proceed. The user re-runs with `--force` or picks a different action.
+- If `--force` was passed AND the task is claimed by someone else → proceed but print a one-line notice: "Proceeding on task claimed by <assignee> — make sure you've coordinated."
+
+If no `assignee` is set but you intend to make changes in a team setting, gently suggest the user run `/pm-claim` first so teammates know you're working on it. Don't refuse — solo developers and CI usage shouldn't require claiming.
 
 ## Step 2 — Load full context
 

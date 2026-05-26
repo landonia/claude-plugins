@@ -48,13 +48,13 @@ Each task file is markdown with YAML frontmatter capturing `status`, `depends_on
 ### The flow
 
 ```
-/pm-prd       →   /pm-research    →   /pm-plan    →   /pm-execute    →   /pm-verify
-   ▲                                                         │
-   │                                                         ▼ (rejected loops back)
-   /pm-amend  ──→  /pm-replan                          /pm-release  →  /pm-version v2
+/pm-prd  →  /pm-research  →  /pm-plan  →  /pm-claim  →  /pm-execute  →  /pm-verify
+   ▲                                                                          │
+   │                                                                          ▼ (rejected loops back)
+   /pm-amend  ──→  /pm-replan                                        /pm-release  →  /pm-version v2
 ```
 
-You can skip stages (`/pm-plan` will warn if there's no research but proceed) — the structure is opinionated, not rigid.
+`/pm-claim` is optional for solo work and recommended for multi-developer teams — it makes your "I'm working on this" visible to teammates via git so two people don't double-implement the same task. You can skip stages (`/pm-plan` will warn if there's no research but proceed) — the structure is opinionated, not rigid.
 
 ---
 
@@ -126,6 +126,17 @@ Shown as a diff: `Preserving 3 / Replacing 2 / Adding 4` so you can confirm befo
 
 ### Execution and verification
 
+#### `/pm-claim [slug] [task-id]`
+Claims a task in a multi-developer setting. Creates the branch (`pm/<slug>/<NNN>-<task-slug>`), flips the task's `status` to `in-progress`, sets `assignee` from your git config, and commits + pushes immediately so the claim is visible to teammates. Optional in solo work, recommended on teams.
+
+```
+/pm-claim usage-billing                    # auto-picks next ready task
+/pm-claim usage-billing 003                # claims a specific task
+/pm-claim usage-billing 003 --force        # take over someone else's claim (handoff)
+```
+
+Pre-flight refuses if your working tree is dirty, your git identity isn't configured, or no remote exists. Pulls `main` (or current base) before reading task state so stale claims don't race. Refuses if the task is already claimed by someone else unless you pass `--force`.
+
 #### `/pm-execute [slug] [task-id]`
 The specialist coding agent. Runs in your main thread so you can intervene mid-task. Detects your stack (pom.xml, package.json, pyproject.toml, etc.) and triggers any relevant skills (e.g. `java-guidelines`, `frontend-design`) and reads any `CLAUDE.md` files. Reads the task, the PRD sections it references, and the relevant research files before writing a single line of code.
 
@@ -135,6 +146,8 @@ The specialist coding agent. Runs in your main thread so you can intervene mid-t
 ```
 
 Status transitions: flips to `in-progress` when work starts, `done-pending-verify` when complete. Appends an `## Implementation summary` to the task body listing files changed, criterion-by-criterion satisfaction with `file:line` evidence, and notes for the verifier.
+
+Honors claims: if you `/pm-execute` a task someone else has claimed, the command refuses unless you pass `--force` (the safe default in teams). Use `/pm-claim ... --force` to take over the claim cleanly, or `/pm-execute ... --force` to bypass the check if you've coordinated out-of-band.
 
 If a previously rejected task is picked up, the executor reads the existing `## Verifier notes` and addresses each gap, then writes a `## Re-execution notes` section explaining how.
 
@@ -254,6 +267,61 @@ Mini-interview captures v2 scope (metered billing, annual contracts). The active
 - **Use `/pm-amend` not edits.** If you discover the PRD was wrong, amending preserves the audit trail. Direct edits to `prd.md` work too but lose the "why" of the change.
 - **Versions are for shipped milestones, not branches.** If you're exploring a risky direction, a git branch is the right tool. A new `vN` folder is appropriate when you've shipped vN-1 and are planning the next deliverable cut.
 - **Brownfield projects** auto-include the `existing-codebase-archaeologist` persona during research, which surfaces the patterns and integration points the new work must respect.
+
+---
+
+## Multi-developer usage
+
+The plugin works on teams, but the workflow needs to be deliberate. Headline pattern: **one lead plans, many engineers execute in parallel, branch per task, git is the concurrency control.**
+
+### Recommended workflow
+
+**1. One lead initiates the planning.**
+`/pm-prd`, `/pm-research`, `/pm-plan` are sequential and synthesize input — running them in parallel produces conflicting PRDs and task lists. One person runs them (often after a kickoff meeting), opens a PR with the `.pm/<slug>/` folder, the team reviews and merges. After that, the planning artifacts are shared source of truth.
+
+**2. Branch per task.**
+Convention: `pm/<slug>/<task-id>-<short-slug>` (e.g. `pm/usage-billing/003-stripe-webhooks`). The task file IS the PR description — it has the goals, acceptance criteria, research links, and (after `/pm-execute`) the implementation summary. Reviewers get full context for free.
+
+**3. Claim before you execute.**
+Run `/pm-claim <slug>` (or `/pm-claim <slug> <id>` for a specific task). It pulls latest, creates the `pm/<slug>/<id>-<slug>` branch, flips status to `in-progress`, sets `assignee` from your git config, commits, and pushes — all in one step. Teammates running `/pm-next` or `/pm-status` immediately see the task is taken. If two people race, the second push is rejected by git and that engineer picks another task. Optimistic locking via git, no central server.
+
+**4. Verification has two layers.**
+- `/pm-verify` (Claude-as-verifier) — run by the executor or a teammate. Independent context, checks against PRD + acceptance criteria. Writes verifier notes into the task file.
+- **PR review** (human) — on top of Claude's verdict. The reviewer sees the task, Claude verifier notes, diff, and test results in one PR and focuses on judgment calls Claude can't make: architectural fit, team conventions, business risk.
+
+For maximum rigor, the `/pm-verify` operator is a different human than the executor. For speed, same person is fine — the PR reviewer is your independent check.
+
+**5. PRD changes go through PR review.**
+`/pm-amend` is append-only (good for merging), but amendments still affect everyone's pending work. Treat `.pm/<slug>/prd.md` and `goals.md` like code: require review. Consider a CODEOWNERS rule on `.pm/`.
+
+**6. `/pm-version` is a lead activity.**
+Same as initial planning — one person scaffolds vN with team input.
+
+### Role split at a glance
+
+| Activity              | Who runs it                              |
+|-----------------------|------------------------------------------|
+| `/pm-prd`             | Lead, once                               |
+| `/pm-research`        | Lead, with team input on persona picks   |
+| `/pm-plan`            | Lead, with team review of the task table |
+| `/pm-claim`           | Any engineer, before executing           |
+| `/pm-execute`         | Any engineer, after `/pm-claim`          |
+| `/pm-verify`          | Executor (fast) or teammate (rigorous)   |
+| `/pm-amend`           | Lead, via PR                             |
+| `/pm-replan`          | Lead, after amendment is merged          |
+| `/pm-release`         | Lead, once per version                   |
+| `/pm-version`         | Lead, once                               |
+| `/pm-status`, `/pm-list`, `/pm-next` | Anyone, anytime           |
+
+### Known gaps to be aware of
+
+- **Concurrent claims race.** If two devs both pull at the same SHA and both run `/pm-claim` simultaneously, the second push is rejected — they pull, see the task is taken, and pick another. Mildly annoying, not destructive.
+- **Task file merge conflicts** if executor and verifier edit simultaneously. Mitigation: don't run `/pm-execute` and `/pm-verify` from separate worktrees on the same task at the same time. The PR pattern naturally serializes this — verify runs against the PR branch, not main.
+- **Research `_index.md` is a single file.** Concurrent `/pm-research` runs would conflict. Not an issue in practice because research is a lead activity that happens once per version.
+
+### TL;DR
+
+> Lead does `/pm-prd` → `/pm-research` → `/pm-plan`, opens a PR with the planning artifacts. Engineers run `/pm-claim` to grab a task (creates branch + flips status + pushes), then `/pm-execute` and `/pm-verify`, open a PR with the task file as description, human reviews on top of Claude's verify verdict, merge. Lead handles `/pm-amend`, `/pm-release`, `/pm-version`.
 
 ---
 

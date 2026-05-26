@@ -42,10 +42,23 @@ Acceptance criteria:
 
 <First 3-5 lines of the task body for context>
 
-Run with: /pm-execute <slug> <NNN>   (or /pm-execute <slug> for auto-pick — will pick this one)
+Run with: /pm-claim <slug> <NNN>     (recommended in multi-dev — makes the claim visible)
+         /pm-execute <slug> <NNN>   (skips claiming — fine for solo work)
 ```
 
 If the task is `rejected`, also show the most recent `## Verifier notes` section so the user can see what needs addressing.
+
+## Step 4 — Also surface in-progress tasks
+
+After printing the next ready task, ALSO print any tasks currently `in-progress` with their assignees, so the user can see who's working on what:
+
+```
+Currently in progress:
+  002  Add billing webhook handler    Alice <a@example.com>  branch pm/<slug>/002-billing-webhook  since 2026-05-22
+  005  Wire up dunning emails         Bob <b@example.com>    branch pm/<slug>/005-dunning-emails   since 2026-05-23
+```
+
+Omit this section entirely if no tasks are `in-progress`.
 
 ## Output discipline
 - Read-only.
