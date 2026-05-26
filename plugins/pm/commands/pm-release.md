@@ -1,0 +1,108 @@
+---
+description: Close out the active version of a project. Verifies all tasks are done, freezes the version folder, and writes RELEASE.md.
+argument-hint: <slug> [version]
+---
+
+# /pm-release — Close out a version
+
+You are running the `/pm-release` command. The user is shipping the current version of the project.
+
+## Inputs
+Parse `$ARGUMENTS`:
+- First token = slug (or empty → active-project resolution).
+- Second token = version (optional, e.g. `v1`). If omitted, use `active_version` from prd.md frontmatter.
+
+## Step 1 — Resolve project and version
+
+Standard active-project resolution. Determine the target version.
+
+## Step 2 — Gate check — all tasks must be done
+
+Read every task file in `.pm/<slug>/<version>/tasks/`. Count by status.
+
+**Refuse to release** if ANY task is `pending`, `in-progress`, `done-pending-verify`, or `rejected`. Print the offending tasks and tell the user:
+```
+Cannot release <version>. <N> task(s) not done:
+  - 003 (rejected) — see Verifier notes
+  - 007 (pending) — run /pm-execute
+  - 009 (done-pending-verify) — run /pm-verify
+Resolve these, then re-run /pm-release.
+```
+
+If `tasks/` is empty or doesn't exist, refuse — there's nothing to release.
+
+If `RELEASE.md` already exists for this version, refuse — version already released. Suggest `/pm-version <slug> v<N+1>` to start the next one.
+
+## Step 3 — Gather release details
+
+Ask the user (use AskUserQuestion where applicable):
+1. **Release tag / version string** (e.g. "v1.0.0", "2026-Q2 launch", "internal beta"). Default: the version folder name.
+2. **Deviations from goals.md?** Free-form — what shipped differently than originally scoped, and why.
+3. **Links to PRs / commits / deployment evidence?** Free-form — paste URLs or commit SHAs.
+4. **Known limitations carrying into next version?** These become seed material for v(N+1) planning.
+
+## Step 4 — Write RELEASE.md
+
+Create `.pm/<slug>/<version>/RELEASE.md`:
+
+```markdown
+---
+version: <version folder name>
+release_tag: <user-supplied tag>
+released: <YYYY-MM-DD>
+status: shipped
+---
+
+# <version> — Release notes
+
+## What shipped
+Summary derived from `<version>/goals.md` "What ships in <version>" minus any deviations.
+
+## Tasks completed
+- 001 — <title>
+- 002 — <title>
+- ...
+
+## Deviations from original goals
+<User-supplied — what shipped differently and why.>
+
+## Evidence
+- <links / commit SHAs from user>
+
+## Known limitations
+<Carrying into next version.>
+
+## Research artifacts
+- [Research index](research/_index.md) — <count> persona reports
+
+## Amendments during this version
+<List PRD Amendments dated within the version's active window, if any.>
+```
+
+## Step 5 — Update PRD frontmatter
+
+In `.pm/<slug>/prd.md`, update the frontmatter:
+- If this was the project's only version, set `status: shipped`.
+- Otherwise leave `status` as-is (the next version will set it back to `active`).
+
+In `.pm/<slug>/<version>/goals.md`, update frontmatter `status: shipped`.
+
+## Step 6 — Optional: write a top-level changelog entry
+
+If `.pm/<slug>/CHANGELOG.md` doesn't exist, ask the user if they want one created. If yes (or if it exists), prepend an entry:
+
+```markdown
+## <release_tag> — <YYYY-MM-DD>
+<One-paragraph summary from RELEASE.md "What shipped".>
+```
+
+## Step 7 — Hand off
+
+Print:
+- Path to RELEASE.md.
+- Path to CHANGELOG.md (if created/updated).
+- Next-step hint: `/pm-version <slug> v<N+1>` to start the next milestone (if more work is expected), or "Project complete — set `status: archived` in prd.md when ready to file it away."
+
+## Output discipline
+- A release is a frozen artifact. Do not edit RELEASE.md after writing (the user can, but the command doesn't).
+- Don't tag git, don't push, don't create GitHub releases unless the user asks explicitly. This command is about the PM artifact; release engineering is separate.

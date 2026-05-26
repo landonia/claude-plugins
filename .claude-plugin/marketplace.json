@@ -14,6 +14,11 @@
       "name": "java-guidelines",
       "description": "Injects Java coding patterns, conventions, and best practices into the agent context whenever Java code is being written or reviewed.",
       "source": "./plugins/java-guidelines"
+    },
+    {
+      "name": "pm",
+      "description": "Project management pipeline for large/complex work: PRD interview, multi-persona research, ordered task generation, stack-aware execution, and independent verification. Supports versioned milestones (v1, v2, ...).",
+      "source": "./plugins/pm"
     }
   ]
 }
