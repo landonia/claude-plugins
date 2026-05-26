@@ -3,9 +3,9 @@ description: Interview the user with a PM + dynamic domain SME pair to fill gaps
 argument-hint: <one-line idea>
 ---
 
-# /pm-prd — PRD interview and draft
+# /pm:prd — PRD interview and draft
 
-You are running the `/pm-prd` command. The user wants to capture a product idea as a structured PRD using a two-persona interview.
+You are running the `/pm:prd` command. The user wants to capture a product idea as a structured PRD using a two-persona interview.
 
 ## Inputs
 - Idea seed: `$ARGUMENTS`
@@ -18,7 +18,7 @@ If `$ARGUMENTS` is empty or just whitespace, ask the user: "What's the idea? Giv
 Derive a kebab-case slug from the idea (3–5 words max). Examples: "build a tool that schedules recurring S3 exports" → `recurring-s3-exports`. Show the slug to the user and let them override before proceeding.
 
 Check whether `.pm/<slug>/` already exists. If it does, STOP and ask whether the user wants to:
-- amend the existing PRD (suggest `/pm-amend <slug>` instead), or
+- amend the existing PRD (suggest `/pm:amend <slug>` instead), or
 - pick a new slug, or
 - delete the existing folder (requires explicit confirmation).
 
@@ -126,21 +126,21 @@ What "v1 is done" looks like, in observable terms.
 This folder holds the project's PRD, research, and tasks. Managed by the `pm` plugin.
 
 ## Layout
-- `prd.md` — canonical product vision. Mutable via `/pm-amend`.
+- `prd.md` — canonical product vision. Mutable via `/pm:amend`.
 - `v1/`, `v2/`, ... — versioned milestones. Each contains:
   - `goals.md` — what this version delivers
-  - `research/` — per-persona research reports written by `/pm-research`
-  - `tasks/` — one task file per unit of work, written by `/pm-plan`
-  - `RELEASE.md` — written by `/pm-release` when the version ships (frozen)
+  - `research/` — per-persona research reports written by `/pm:research`
+  - `tasks/` — one task file per unit of work, written by `/pm:plan`
+  - `RELEASE.md` — written by `/pm:release` when the version ships (frozen)
 
 ## Workflow
-1. `/pm-prd <idea>` (done — that's how this folder exists)
-2. `/pm-research <slug>` — multi-persona research
-3. `/pm-plan <slug>` — generate ordered tasks
-4. `/pm-execute <slug>` — execute next ready task
-5. `/pm-verify <slug>` — verify completion
-6. `/pm-release <slug>` — close out the version
-7. `/pm-version <slug> v2` — start the next milestone
+1. `/pm:prd <idea>` (done — that's how this folder exists)
+2. `/pm:research <slug>` — multi-persona research
+3. `/pm:plan <slug>` — generate ordered tasks
+4. `/pm:execute <slug>` — execute next ready task
+5. `/pm:verify <slug>` — verify completion
+6. `/pm:release <slug>` — close out the version
+7. `/pm:version <slug> v2` — start the next milestone
 ```
 
 ## Step 5 — Confirm with the user
@@ -151,7 +151,7 @@ Show the drafted `prd.md` and `goals.md` content to the user before writing. Mak
 
 After writing, print:
 - The paths of the files created.
-- A one-line next-step hint: `Next: /pm-research <slug>` (or `/pm-plan <slug>` if the user says the work is straightforward enough to skip research).
+- A one-line next-step hint: `Next: /pm:research <slug>` (or `/pm:plan <slug>` if the user says the work is straightforward enough to skip research).
 
 ## Output discipline
 - Do not invent details the user didn't confirm. If a section is thin because the user didn't address it, leave a `_TBD_` placeholder and call it out.

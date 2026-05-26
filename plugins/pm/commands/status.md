@@ -3,7 +3,7 @@ description: Print a project dashboard — PRD title, version state, task counts
 argument-hint: [slug]
 ---
 
-# /pm-status — Project dashboard
+# /pm:status — Project dashboard
 
 Read-only summary of a project's state.
 
@@ -12,7 +12,7 @@ Read-only summary of a project's state.
 
 ## Step 1 — Resolve project
 
-Standard resolution. If no project, tell the user "No projects in .pm/. Start one with /pm-prd <idea>."
+Standard resolution. If no project, tell the user "No projects in .pm/. Start one with /pm:prd <idea>."
 
 ## Step 2 — Gather state
 
@@ -53,14 +53,14 @@ In-progress / claimed tasks:
   004  Add billing webhook handler    Alice <a@example.com> pm/<slug>/004-billing-webhook 2026-05-22
 
 Next ready task: 006 — "Wire up dunning email templates"
-Suggested next command: /pm-claim <slug>   (then /pm-execute)
+Suggested next command: /pm:claim <slug>   (then /pm:execute)
 ```
 
 If no tasks have assignees set, omit the "In-progress / claimed tasks" section entirely. If the user is solo (only one assignee value appears across all tasks, matching git config user), still show the section — it's useful for the user to see their own claims.
 
-If the active version has no tasks yet: "Next: /pm-plan <slug>".
-If the active version has no research yet: "Next: /pm-research <slug>".
-If everything in active version is done and no RELEASE.md: "Next: /pm-release <slug>".
+If the active version has no tasks yet: "Next: /pm:plan <slug>".
+If the active version has no research yet: "Next: /pm:research <slug>".
+If everything in active version is done and no RELEASE.md: "Next: /pm:release <slug>".
 
 ## Output discipline
 - This command WRITES NOTHING. Read-only.

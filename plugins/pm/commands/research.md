@@ -3,9 +3,9 @@ description: Multi-persona research on a PRD. Orchestrator picks personas from t
 argument-hint: <slug>
 ---
 
-# /pm-research — Multi-persona research
+# /pm:research — Multi-persona research
 
-You are running the `/pm-research` command. You are the **orchestrator**. You do NOT do the research yourself — you pick personas, dispatch them as parallel subagents, and assemble the results.
+You are running the `/pm:research` command. You are the **orchestrator**. You do NOT do the research yourself — you pick personas, dispatch them as parallel subagents, and assemble the results.
 
 ## Inputs
 - Slug: `$ARGUMENTS` (use active-project resolution if empty).
@@ -32,7 +32,7 @@ Read:
 - `.pm/<slug>/<active_version>/goals.md` (full file)
 - `${CLAUDE_PROJECT_DIR}/plugins/pm/personas.md` (the catalog — adjust path if running outside this repo; the plugin's own personas.md ships with the plugin)
 
-If `prd.md` is missing, stop and tell the user to run `/pm-prd` first.
+If `prd.md` is missing, stop and tell the user to run `/pm:prd` first.
 
 ## Step 3 — Detect repo state (greenfield vs brownfield)
 
@@ -96,22 +96,22 @@ Generated: <YYYY-MM-DD>
 Collect every "Open questions for the user" item from all reports here, deduplicated. Each links back to its source report.
 
 ## Recommended next step
-- If there are unresolved open questions that materially affect scope: ask the user to answer them, then suggest `/pm-amend <slug>` if the answers change the PRD.
-- Otherwise: `/pm-plan <slug>`.
+- If there are unresolved open questions that materially affect scope: ask the user to answer them, then suggest `/pm:amend <slug>` if the answers change the PRD.
+- Otherwise: `/pm:plan <slug>`.
 ```
 
 ## Step 7 — Surface open questions
 
 If the assembled index has open questions, present them to the user. Group by report. Ask which (if any) they want to answer now. For each answered question:
 - Update the relevant research report by appending an `## Update — <date>` section that captures the user's answer and any revised recommendation.
-- If the answer materially changes scope, suggest `/pm-amend <slug>` next.
+- If the answer materially changes scope, suggest `/pm:amend <slug>` next.
 
 ## Step 8 — Hand off
 
 Print:
 - Count of reports written and the index path.
 - Outstanding open questions count.
-- Next-step hint: `/pm-plan <slug>`.
+- Next-step hint: `/pm:plan <slug>`.
 
 ## Output discipline
 - Subagent calls go in a SINGLE response, parallel. Sequential is a bug.

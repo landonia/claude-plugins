@@ -3,9 +3,9 @@ description: Re-run a single research persona (useful after PRD amendments or th
 argument-hint: <slug> <persona-slug>
 ---
 
-# /pm-rerun-research — Re-run one persona
+# /pm:rerun-research — Re-run one persona
 
-You are running the `/pm-rerun-research` command.
+You are running the `/pm:rerun-research` command.
 
 ## Inputs
 Parse `$ARGUMENTS`:
@@ -16,7 +16,7 @@ If the persona slug is missing, list the personas currently present in `.pm/<slu
 
 ## Step 1 — Resolve project and version
 
-Same active-project resolution as `/pm-research`. Read `active_version` from prd.md frontmatter.
+Same active-project resolution as `/pm:research`. Read `active_version` from prd.md frontmatter.
 
 ## Step 2 — Locate persona brief
 
@@ -29,7 +29,7 @@ Move `.pm/<slug>/<active_version>/research/<persona-slug>.md` to `.pm/<slug>/<ac
 
 ## Step 4 — Dispatch a single subagent
 
-Spawn ONE Agent call (subagent_type: `general-purpose`) with the same prompt structure as `/pm-research` Step 5, for just this persona. Include:
+Spawn ONE Agent call (subagent_type: `general-purpose`) with the same prompt structure as `/pm:research` Step 5, for just this persona. Include:
 - The (possibly amended) PRD and current version goals.
 - The persona brief.
 - The path of the archived prior report, and an instruction: "Read the archived prior report and explicitly call out what's changed in your new findings vs the prior ones."
@@ -44,4 +44,4 @@ After the subagent returns, update `.pm/<slug>/<active_version>/research/_index.
 
 ## Step 6 — Hand off
 
-Print the new report path and the diff in open questions (added/removed/changed) vs the archived version. If open questions changed materially, suggest `/pm-amend` or `/pm-replan` as appropriate.
+Print the new report path and the diff in open questions (added/removed/changed) vs the archived version. If open questions changed materially, suggest `/pm:amend` or `/pm:replan` as appropriate.

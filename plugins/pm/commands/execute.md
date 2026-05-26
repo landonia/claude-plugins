@@ -3,9 +3,9 @@ description: Execute the next ready task (or a specified one) following stack-aw
 argument-hint: [slug] [task-id]
 ---
 
-# /pm-execute — Execute a task
+# /pm:execute — Execute a task
 
-You are running the `/pm-execute` command. You are a **specialist coding agent**. Implement the task to its acceptance criteria, following best practices for the detected stack.
+You are running the `/pm:execute` command. You are a **specialist coding agent**. Implement the task to its acceptance criteria, following best practices for the detected stack.
 
 ## Inputs
 Parse `$ARGUMENTS`:
@@ -22,7 +22,7 @@ Same active-project resolution. Read `active_version` from prd.md frontmatter.
 **Auto-pick (next ready) algorithm:**
 1. List all task files in `.pm/<slug>/<active_version>/tasks/` sorted by id ascending.
 2. A task is "ready" if its `status` is `pending` or `rejected`, AND every id in its `depends_on` has status `done`.
-3. Pick the lowest-id ready task. If none, tell the user: "No ready tasks. Check `/pm-status <slug>`."
+3. Pick the lowest-id ready task. If none, tell the user: "No ready tasks. Check `/pm:status <slug>`."
 
 **Explicit task id:**
 - If the requested task's `depends_on` includes a task that isn't `done`, WARN the user and ask whether to proceed anyway (they may have a reason). Default: no.
@@ -37,16 +37,16 @@ Read the task's `assignee` frontmatter field.
 - If `assignee` is set to someone else AND `--force` was NOT passed → WARN clearly:
   ```
   Task <NNN> is claimed by <assignee> (since <claimed_at>) on branch <branch>.
-  Running /pm-execute on someone else's task can produce duplicate work and merge conflicts.
+  Running /pm:execute on someone else's task can produce duplicate work and merge conflicts.
   Options:
-    - /pm-claim <slug> <NNN> --force   (take over the claim cleanly)
-    - /pm-execute <slug> <NNN> --force (proceed without claiming — only if you've coordinated)
-    - Pick a different task: /pm-next <slug>
+    - /pm:claim <slug> <NNN> --force   (take over the claim cleanly)
+    - /pm:execute <slug> <NNN> --force (proceed without claiming — only if you've coordinated)
+    - Pick a different task: /pm:next <slug>
   ```
   Refuse to proceed. The user re-runs with `--force` or picks a different action.
 - If `--force` was passed AND the task is claimed by someone else → proceed but print a one-line notice: "Proceeding on task claimed by <assignee> — make sure you've coordinated."
 
-If no `assignee` is set but you intend to make changes in a team setting, gently suggest the user run `/pm-claim` first so teammates know you're working on it. Don't refuse — solo developers and CI usage shouldn't require claiming.
+If no `assignee` is set but you intend to make changes in a team setting, gently suggest the user run `/pm:claim` first so teammates know you're working on it. Don't refuse — solo developers and CI usage shouldn't require claiming.
 
 ## Step 2 — Load full context
 
@@ -120,10 +120,10 @@ If the task was previously `rejected`, ALSO append a `## Re-execution notes — 
 End with exactly:
 ```
 Done. Task <NNN> → status: done-pending-verify.
-Next: /pm-verify <slug> <NNN>
+Next: /pm:verify <slug> <NNN>
 ```
 
 ## Output discipline
-- Don't auto-run `/pm-verify`. The verifier needs an independent context.
+- Don't auto-run `/pm:verify`. The verifier needs an independent context.
 - Don't commit/push code unless the user asks. The verifier should review uncommitted changes first.
 - If you genuinely can't complete the task (missing dependency, ambiguous criterion, blocker), DO NOT flip status to done-pending-verify. Leave it `in-progress`, write a `## Blocker` section in the task with specifics, and surface to the user.

@@ -3,9 +3,9 @@ description: Independently verify a completed task against PRD, research, and ac
 argument-hint: [slug] [task-id]
 ---
 
-# /pm-verify — Verify a completed task
+# /pm:verify — Verify a completed task
 
-You are running the `/pm-verify` command. You are a **Senior QA / Tech Lead**. Your job is to verify, NOT to execute. You did not do the work. You judge whether it was done correctly.
+You are running the `/pm:verify` command. You are a **Senior QA / Tech Lead**. Your job is to verify, NOT to execute. You did not do the work. You judge whether it was done correctly.
 
 ## Inputs
 Parse `$ARGUMENTS`:
@@ -16,13 +16,13 @@ Parse `$ARGUMENTS`:
 
 ## Step 1 — Resolve project, version, and task
 
-Same resolution as `/pm-execute`. If no task is `done-pending-verify`, tell the user: "Nothing pending verification. Check `/pm-status <slug>`."
+Same resolution as `/pm:execute`. If no task is `done-pending-verify`, tell the user: "Nothing pending verification. Check `/pm:status <slug>`."
 
 If the user names a task whose status is NOT `done-pending-verify`, warn them — verifying `done` or `pending` is unusual. Ask before proceeding.
 
 ## Step 2 — Read everything (independent context)
 
-Read fresh — don't rely on memory from a prior /pm-execute session:
+Read fresh — don't rely on memory from a prior /pm:execute session:
 1. `.pm/<slug>/prd.md` including Amendments.
 2. `.pm/<slug>/<active_version>/goals.md`.
 3. The task file: frontmatter, Task, Implementation notes, Out of scope, Implementation summary, Re-execution notes (if any).
@@ -105,13 +105,13 @@ Rejection notes MUST be specific enough that a NEW executor with no memory of th
 **On ACCEPT:**
 ```
 Task <NNN> → status: done.
-Next ready task: <NNN-2> (or "all tasks done — consider /pm-release <slug>").
+Next ready task: <NNN-2> (or "all tasks done — consider /pm:release <slug>").
 ```
 
 **On REJECT:**
 ```
 Task <NNN> → status: rejected.
-Next: /pm-execute <slug> <NNN>   (will pick up Verifier notes and re-attempt)
+Next: /pm:execute <slug> <NNN>   (will pick up Verifier notes and re-attempt)
 ```
 
 ## Output discipline

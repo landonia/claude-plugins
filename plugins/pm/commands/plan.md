@@ -3,9 +3,9 @@ description: Generate ordered task files with frontmatter from the PRD and resea
 argument-hint: <slug>
 ---
 
-# /pm-plan — Generate ordered tasks
+# /pm:plan — Generate ordered tasks
 
-You are running the `/pm-plan` command. Turn the PRD and research into an ordered list of executable task files.
+You are running the `/pm:plan` command. Turn the PRD and research into an ordered list of executable task files.
 
 ## Inputs
 - Slug: `$ARGUMENTS` (active-project resolution if empty).
@@ -17,11 +17,11 @@ Same resolution rules as other commands. Read `active_version` from `prd.md` fro
 ## Step 2 — Gate check
 
 Required artifacts:
-- `.pm/<slug>/prd.md` — REQUIRED. If missing, stop and tell the user to run `/pm-prd`.
+- `.pm/<slug>/prd.md` — REQUIRED. If missing, stop and tell the user to run `/pm:prd`.
 - `.pm/<slug>/<active_version>/goals.md` — REQUIRED.
-- `.pm/<slug>/<active_version>/research/` — RECOMMENDED. If empty or missing, warn: "No research found. Recommend running /pm-research <slug> first. Proceed anyway? (y/N)".
+- `.pm/<slug>/<active_version>/research/` — RECOMMENDED. If empty or missing, warn: "No research found. Recommend running /pm:research <slug> first. Proceed anyway? (y/N)".
 
-If `.pm/<slug>/<active_version>/tasks/` already has files, STOP and tell the user to use `/pm-replan <slug>` instead (which preserves done tasks).
+If `.pm/<slug>/<active_version>/tasks/` already has files, STOP and tell the user to use `/pm:replan <slug>` instead (which preserves done tasks).
 
 ## Step 3 — Read everything
 
@@ -33,7 +33,7 @@ Read:
 ## Step 4 — Draft the task list
 
 Decompose the work into atomic, executable tasks. Rules:
-- Each task is **independently executable in one /pm-execute session** — typically a single concern, single layer, or single feature slice.
+- Each task is **independently executable in one /pm:execute session** — typically a single concern, single layer, or single feature slice.
 - Order tasks by execution sequence. Use `depends_on` for tasks that need a prior task to complete first.
 - Use **3-digit zero-padded IDs** (`001`, `002`, …) — keeps files sorted alphabetically.
 - Slugify the title for the filename: `001-set-up-postgres-schema.md`.
@@ -59,11 +59,11 @@ For each task, write `.pm/<slug>/<active_version>/tasks/<NNN>-<slug>.md` with th
 id: <NNN>
 title: <Title>
 status: pending          # pending | in-progress | done-pending-verify | done | rejected
-assignee: ""             # set by /pm-claim — "<name> <email>"
-branch: ""               # set by /pm-claim — pm/<slug>/<NNN>-<task-slug>
-claimed_at: ""           # set by /pm-claim — YYYY-MM-DD
-pr_url: ""               # set by /pm-complete — GitHub PR URL
-completed_at: ""         # set by /pm-complete — YYYY-MM-DD
+assignee: ""             # set by /pm:claim — "<name> <email>"
+branch: ""               # set by /pm:claim — pm/<slug>/<NNN>-<task-slug>
+claimed_at: ""           # set by /pm:claim — YYYY-MM-DD
+pr_url: ""               # set by /pm:complete — GitHub PR URL
+completed_at: ""         # set by /pm:complete — YYYY-MM-DD
 depends_on: []           # list of task ids as strings, e.g. ["001", "002"]
 prd_refs:                # list of section references
   - "prd.md §3.1"
@@ -86,7 +86,7 @@ created: <YYYY-MM-DD>
 <Anything an executor might think falls into this task but doesn't. Prevents scope creep.>
 
 ## Verifier notes
-<!-- Empty at creation. Populated by /pm-verify if rejected. -->
+<!-- Empty at creation. Populated by /pm:verify if rejected. -->
 ```
 
 ## Step 6 — Hand off
@@ -94,7 +94,7 @@ created: <YYYY-MM-DD>
 Print:
 - Count of tasks written.
 - The first ready task (no unmet deps).
-- Next-step hint: `/pm-execute <slug>` (auto-picks the first ready task) or `/pm-next <slug>` to peek.
+- Next-step hint: `/pm:execute <slug>` (auto-picks the first ready task) or `/pm:next <slug>` to peek.
 
 ## Output discipline
 - Don't generate more than ~25 tasks in one pass — if the work is bigger, group into phases and tell the user some tasks are "phase 2" placeholders that need their own decomposition later.

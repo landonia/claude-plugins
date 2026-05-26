@@ -3,9 +3,9 @@ description: Claim a task for yourself — creates the branch, flips status to i
 argument-hint: [slug] [task-id] [--force]
 ---
 
-# /pm-claim — Claim a task
+# /pm:claim — Claim a task
 
-You are running the `/pm-claim` command. The user is taking ownership of a task in a multi-developer setting. This command makes the claim **visible to teammates via git** so others won't pick the same task.
+You are running the `/pm:claim` command. The user is taking ownership of a task in a multi-developer setting. This command makes the claim **visible to teammates via git** so others won't pick the same task.
 
 ## Inputs
 
@@ -94,12 +94,12 @@ Claimed task <NNN> — <title>
   Branch:    <branch>  (pushed to origin)
   Status:    in-progress
 
-Next: /pm-execute <slug> <NNN>
+Next: /pm:execute <slug> <NNN>
 ```
 
 ## Output discipline
 
 - Never force-push. If the remote rejects, the user resolves.
 - Don't commit anything other than the task file. If you somehow have other staged or unstaged changes, that's a pre-flight bug — refuse rather than commit them.
-- Don't run `/pm-execute` automatically. Claiming and executing are separate steps so the user can pause between them.
-- If the user runs `/pm-claim` from a CI environment (no interactive shell, automation context), it should still work — all decisions either have safe defaults or are flagged via `--force`.
+- Don't run `/pm:execute` automatically. Claiming and executing are separate steps so the user can pause between them.
+- If the user runs `/pm:claim` from a CI environment (no interactive shell, automation context), it should still work — all decisions either have safe defaults or are flagged via `--force`.

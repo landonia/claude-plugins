@@ -28,7 +28,7 @@ Injects Java coding patterns, conventions, and best practices (naming, design pa
 ```
 
 ### pm
-Project management pipeline for large/complex work: PRD interview, multi-persona research, ordered task generation, stack-aware execution, independent verification, and PR submission. Supports versioned milestones (v1, v2, ...) and multi-developer team workflow with branch-per-task and `/pm-claim`/`/pm-complete`/`/pm-resume`. Fifteen slash commands prefixed `/pm-`.
+Project management pipeline for large/complex work: PRD interview, multi-persona research, ordered task generation, stack-aware execution, independent verification, and PR submission. Supports versioned milestones (v1, v2, ...) and multi-developer team workflow with branch-per-task and `/pm:claim` / `/pm:complete` / `/pm:resume`. Fifteen slash commands under the `/pm:` namespace.
 
 [Plugin README](plugins/pm/README.md)
 

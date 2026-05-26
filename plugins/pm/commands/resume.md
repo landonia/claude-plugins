@@ -3,9 +3,9 @@ description: Switch back to a task's branch and pull latest. Used to come back t
 argument-hint: [slug] [task-id]
 ---
 
-# /pm-resume — Switch back to a task's branch
+# /pm:resume — Switch back to a task's branch
 
-You are running the `/pm-resume` command. The user is returning to work on a task whose branch they're no longer on.
+You are running the `/pm:resume` command. The user is returning to work on a task whose branch they're no longer on.
 
 ## Inputs
 
@@ -32,18 +32,18 @@ Standard active-project resolution. Read `active_version` from prd.md frontmatte
 3. Sort by id ascending.
 4. If exactly one match: use it (tell the user which).
 5. If multiple: present them with AskUserQuestion — list each with status, assignee, branch, and last-modified date. User picks.
-6. If none: tell the user "No tasks to resume. Use /pm-claim to start one, or /pm-status to see project state."
+6. If none: tell the user "No tasks to resume. Use /pm:claim to start one, or /pm:status to see project state."
 
 **Explicit task id:**
 - Verify the task exists. If not, error clearly.
 - If task `status` is `done` (already complete) and `pr_url` is set: warn the user the task is done and PR'd; ask whether to resume anyway (e.g. to address PR comments). Default: yes.
-- If task `status` is `pending`: refuse with "Task <NNN> hasn't been claimed yet. Use /pm-claim <slug> <NNN> to start it."
+- If task `status` is `pending`: refuse with "Task <NNN> hasn't been claimed yet. Use /pm:claim <slug> <NNN> to start it."
 
 ## Step 4 — Find the branch
 
 Read the task's `branch:` frontmatter field.
 
-- **Empty/missing** → refuse with: "Task <NNN> has no branch recorded. It may have been worked on without /pm-claim. Run /pm-claim <slug> <NNN> to set up the branch."
+- **Empty/missing** → refuse with: "Task <NNN> has no branch recorded. It may have been worked on without /pm:claim. Run /pm:claim <slug> <NNN> to set up the branch."
 - **Set** → proceed to Step 5.
 
 ## Step 5 — Fetch and check out
@@ -69,10 +69,10 @@ Resumed task <NNN> — <title>
 
 Then a context-aware next-step hint based on status:
 
-- **`in-progress`** → "Next: continue with /pm-execute <slug> <NNN> (or /pm-complete <slug> <NNN> if the work is already verified)."
-- **`done-pending-verify`** → "Next: /pm-verify <slug> <NNN>."
-- **`rejected`** → "Next: /pm-execute <slug> <NNN> — address the Verifier notes" + print the most recent `## Verifier notes` section.
-- **`done`** with `pr_url` set → "Next: address PR comments locally, commit, then `git push` to update the PR. (Or /pm-complete <slug> <NNN> if you want to re-record the PR URL after fixes.)"
+- **`in-progress`** → "Next: continue with /pm:execute <slug> <NNN> (or /pm:complete <slug> <NNN> if the work is already verified)."
+- **`done-pending-verify`** → "Next: /pm:verify <slug> <NNN>."
+- **`rejected`** → "Next: /pm:execute <slug> <NNN> — address the Verifier notes" + print the most recent `## Verifier notes` section.
+- **`done`** with `pr_url` set → "Next: address PR comments locally, commit, then `git push` to update the PR. (Or /pm:complete <slug> <NNN> if you want to re-record the PR URL after fixes.)"
 
 ## Output discipline
 

@@ -3,9 +3,9 @@ description: Regenerate pending tasks from an amended PRD while preserving done 
 argument-hint: <slug>
 ---
 
-# /pm-replan — Regenerate pending tasks
+# /pm:replan — Regenerate pending tasks
 
-You are running the `/pm-replan` command. The PRD has changed (typically via `/pm-amend`) and pending tasks may no longer match.
+You are running the `/pm:replan` command. The PRD has changed (typically via `/pm:amend`) and pending tasks may no longer match.
 
 ## Inputs
 - Slug: `$ARGUMENTS` (active-project resolution if empty).
@@ -35,7 +35,7 @@ Read the full current state:
 Decompose the remaining work in light of:
 - What's already done (don't redo it).
 - The amended PRD goals.
-- Updated research findings (especially any "Update —" sections from `/pm-rerun-research`).
+- Updated research findings (especially any "Update —" sections from `/pm:rerun-research`).
 - Verifier notes on any `rejected` tasks — those gaps must be addressed.
 
 Generate new task definitions for the remaining work. Use the next free ID (continue from the highest existing ID; don't reuse IDs from candidates being replaced).
@@ -58,15 +58,15 @@ For each task being replaced:
 
 ## Step 6 — Write new tasks
 
-Use the same file format as `/pm-plan` Step 5. Make sure `depends_on` references account for the new ID layout. If a new task depends on a preserved task that's already `done`, that's fine — `depends_on` just needs the ID; status filtering happens at execute time.
+Use the same file format as `/pm:plan` Step 5. Make sure `depends_on` references account for the new ID layout. If a new task depends on a preserved task that's already `done`, that's fine — `depends_on` just needs the ID; status filtering happens at execute time.
 
 ## Step 7 — Hand off
 
 Print:
 - Counts: preserved / archived / added.
 - The first ready task post-replan.
-- Next-step hint: `/pm-execute <slug>` or `/pm-status <slug>` to review.
+- Next-step hint: `/pm:execute <slug>` or `/pm:status <slug>` to review.
 
 ## Output discipline
 - NEVER touch tasks with status `done`, `done-pending-verify`, or `in-progress`. Even if the amendment seems to invalidate them, that work is captured and the verifier already approved it (or is about to).
-- If the amendment fundamentally invalidates done work, that's a `/pm-version <slug> v2` situation, not a replan. Tell the user.
+- If the amendment fundamentally invalidates done work, that's a `/pm:version <slug> v2` situation, not a replan. Tell the user.

@@ -3,9 +3,9 @@ description: Mark a verified task as complete — commits remaining changes, pus
 argument-hint: [slug] [task-id] [--checkout-main]
 ---
 
-# /pm-complete — Open the PR for a verified task
+# /pm:complete — Open the PR for a verified task
 
-You are running the `/pm-complete` command. The user is declaring a task fully done and ready for human review / merge. This command commits any remaining implementation changes, pushes, and opens a pull request — the PR description is the task file itself.
+You are running the `/pm:complete` command. The user is declaring a task fully done and ready for human review / merge. This command commits any remaining implementation changes, pushes, and opens a pull request — the PR description is the task file itself.
 
 ## Inputs
 
@@ -20,12 +20,12 @@ Parse `$ARGUMENTS`. Supported forms:
 
 Standard active-project resolution. Read `active_version` from prd.md frontmatter.
 
-For auto-pick: a task is "complete-ready" if `status: done` AND `pr_url` is empty/missing. If none, tell the user: "No verified tasks awaiting PR. Run /pm-verify first, or check /pm-status."
+For auto-pick: a task is "complete-ready" if `status: done` AND `pr_url` is empty/missing. If none, tell the user: "No verified tasks awaiting PR. Run /pm:verify first, or check /pm:status."
 
 If the user names a task explicitly, verify it's actually ready:
-- If `status` is `done-pending-verify` → refuse with "Task <NNN> hasn't been verified yet. Run /pm-verify first."
+- If `status` is `done-pending-verify` → refuse with "Task <NNN> hasn't been verified yet. Run /pm:verify first."
 - If `status` is `in-progress` or `pending` → refuse with "Task <NNN> isn't done — implementation isn't complete."
-- If `status` is `rejected` → refuse with "Task <NNN> was rejected. Run /pm-execute to address Verifier notes."
+- If `status` is `rejected` → refuse with "Task <NNN> was rejected. Run /pm:execute to address Verifier notes."
 - If `status` is `done` and `pr_url` is already set → tell the user the PR already exists at `<pr_url>`, ask whether to push latest commits to update it (yes) or skip (no).
 
 ## Step 2 — Pre-flight checks
@@ -34,8 +34,8 @@ Run in parallel where possible:
 
 1. **`gh` is installed.** `command -v gh` must succeed. If not, refuse with: "GitHub CLI (`gh`) not found. Install it from https://cli.github.com/ then re-run."
 2. **`gh` is authenticated.** `gh auth status` must succeed. If not, refuse with: "Not authenticated to GitHub. Run `gh auth login` then re-run."
-3. **On the right branch.** Read the task's `branch:` frontmatter field. `git rev-parse --abbrev-ref HEAD` must equal it. If on the wrong branch, suggest `/pm-resume <slug> <NNN>` to switch first.
-   - If the task has no `branch:` set (task was never `/pm-claim`-ed), check whether the current branch is sensible (not main/master). If yes, set `branch:` to the current branch and continue. If on main, refuse with: "You're on main. Task <NNN> has no branch recorded. Run /pm-claim or switch to the task branch."
+3. **On the right branch.** Read the task's `branch:` frontmatter field. `git rev-parse --abbrev-ref HEAD` must equal it. If on the wrong branch, suggest `/pm:resume <slug> <NNN>` to switch first.
+   - If the task has no `branch:` set (task was never `/pm:claim`-ed), check whether the current branch is sensible (not main/master). If yes, set `branch:` to the current branch and continue. If on main, refuse with: "You're on main. Task <NNN> has no branch recorded. Run /pm:claim or switch to the task branch."
 4. **Remote exists** for this branch. `git remote get-url origin` must succeed.
 
 ## Step 3 — Commit any uncommitted changes
@@ -107,13 +107,13 @@ Task <NNN> — complete.
   Recorded:  pr_url, completed_at
 
 Next: human review on the PR. After merge:
-  /pm-claim <slug>     to pick up the next task
-  (or /pm-release <slug> if all tasks are done and merged)
+  /pm:claim <slug>     to pick up the next task
+  (or /pm:release <slug> if all tasks are done and merged)
 ```
 
 If `--checkout-main` was passed, adjust the message — you're already on main, ready for the next claim.
 
-If verify ever rejects this task again after the PR is open (e.g. someone runs /pm-verify on the PR branch), the status flips to `rejected`. Run `/pm-resume <slug> <NNN>` to come back to the branch, `/pm-execute <slug> <NNN>` to address the new Verifier notes, then `/pm-complete <slug> <NNN>` to push the fixes (which updates the open PR automatically).
+If verify ever rejects this task again after the PR is open (e.g. someone runs /pm:verify on the PR branch), the status flips to `rejected`. Run `/pm:resume <slug> <NNN>` to come back to the branch, `/pm:execute <slug> <NNN>` to address the new Verifier notes, then `/pm:complete <slug> <NNN>` to push the fixes (which updates the open PR automatically).
 
 ## Output discipline
 

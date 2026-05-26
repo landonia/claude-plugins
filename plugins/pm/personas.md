@@ -1,6 +1,6 @@
 # Research Persona Catalog
 
-The orchestrator (`/pm-research`) picks 3–6 personas from this catalog based on the PRD content. It MAY also propose ad-hoc personas not listed here when the PRD covers an unusual domain — those should still follow the same brief structure.
+The orchestrator (`/pm:research`) picks 3–6 personas from this catalog based on the PRD content. It MAY also propose ad-hoc personas not listed here when the PRD covers an unusual domain — those should still follow the same brief structure.
 
 Each persona writes a single markdown report to `.pm/<slug>/<version>/research/<persona-slug>.md` with this structure:
 
@@ -20,7 +20,7 @@ Things that will bite the implementers if missed.
 Concrete, actionable suggestions ordered by priority.
 
 ## Open questions for the user
-Questions whose answers would change the recommendations. Surfaced back to the user before /pm-plan.
+Questions whose answers would change the recommendations. Surfaced back to the user before /pm:plan.
 
 ## Out of scope
 Topics intentionally not investigated and why.

@@ -3,9 +3,9 @@ description: Scaffold the next version (vN+1) of a project, with a mini PRD-styl
 argument-hint: <slug> <new-version>
 ---
 
-# /pm-version — Start a new version
+# /pm:version — Start a new version
 
-You are running the `/pm-version` command. The user wants to start the next milestone (e.g. v2 after v1 shipped).
+You are running the `/pm:version` command. The user wants to start the next milestone (e.g. v2 after v1 shipped).
 
 ## Inputs
 Parse `$ARGUMENTS`:
@@ -27,14 +27,14 @@ Active-project resolution. Read prd.md frontmatter.
 
 Read `prd.md` and (if it exists) the previous version's `goals.md` and `RELEASE.md` "Known limitations" section to seed the conversation.
 
-Adopt the **PM + dynamic Domain SME** persona pair (same as `/pm-prd`) and conduct a focused mini-interview specific to this version. Questions to cover:
+Adopt the **PM + dynamic Domain SME** persona pair (same as `/pm:prd`) and conduct a focused mini-interview specific to this version. Questions to cover:
 1. **What's the headline goal of this version?**
 2. **What's in scope?** (Pull from PRD goals not yet delivered, plus any new goals or carry-over limitations.)
 3. **What's explicitly deferred to v(N+1)?**
 4. **What changed in the world** since the prior version that affects this one? (Stakeholder shifts, new constraints, lessons learned from the prior release.)
 5. **What's the acceptance bar for "this version is done"?**
 
-Keep it shorter than `/pm-prd` — usually 1–2 rounds. The PRD already exists; you're just defining this version's cut.
+Keep it shorter than `/pm:prd` — usually 1–2 rounds. The PRD already exists; you're just defining this version's cut.
 
 ## Step 4 — Scaffold the version folder
 
@@ -92,8 +92,8 @@ Show the drafted `goals.md` to the user before writing. Apply edits.
 Print:
 - Paths created.
 - The active version is now `<new-version>`.
-- Next-step hint: `/pm-research <slug>` (recommended for any non-trivial version), or `/pm-plan <slug>` to go straight to tasks if the scope is well-understood.
+- Next-step hint: `/pm:research <slug>` (recommended for any non-trivial version), or `/pm:plan <slug>` to go straight to tasks if the scope is well-understood.
 
 ## Output discipline
 - This command does NOT touch the prior version's folder. Old goals, research, tasks, RELEASE.md stay frozen.
-- If the user describes the new version's scope as basically a rewrite or pivot, surface that this might be better as a new project (`/pm-prd`) rather than a new version of the existing one.
+- If the user describes the new version's scope as basically a rewrite or pivot, surface that this might be better as a new project (`/pm:prd`) rather than a new version of the existing one.

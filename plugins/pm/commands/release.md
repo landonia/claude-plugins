@@ -3,9 +3,9 @@ description: Close out the active version of a project. Verifies all tasks are d
 argument-hint: <slug> [version]
 ---
 
-# /pm-release — Close out a version
+# /pm:release — Close out a version
 
-You are running the `/pm-release` command. The user is shipping the current version of the project.
+You are running the `/pm:release` command. The user is shipping the current version of the project.
 
 ## Inputs
 Parse `$ARGUMENTS`:
@@ -24,14 +24,14 @@ Read every task file in `.pm/<slug>/<version>/tasks/`. Count by status.
 ```
 Cannot release <version>. <N> task(s) not done:
   - 003 (rejected) — see Verifier notes
-  - 007 (pending) — run /pm-execute
-  - 009 (done-pending-verify) — run /pm-verify
-Resolve these, then re-run /pm-release.
+  - 007 (pending) — run /pm:execute
+  - 009 (done-pending-verify) — run /pm:verify
+Resolve these, then re-run /pm:release.
 ```
 
 If `tasks/` is empty or doesn't exist, refuse — there's nothing to release.
 
-If `RELEASE.md` already exists for this version, refuse — version already released. Suggest `/pm-version <slug> v<N+1>` to start the next one.
+If `RELEASE.md` already exists for this version, refuse — version already released. Suggest `/pm:version <slug> v<N+1>` to start the next one.
 
 ## Step 3 — Gather release details
 
@@ -101,7 +101,7 @@ If `.pm/<slug>/CHANGELOG.md` doesn't exist, ask the user if they want one create
 Print:
 - Path to RELEASE.md.
 - Path to CHANGELOG.md (if created/updated).
-- Next-step hint: `/pm-version <slug> v<N+1>` to start the next milestone (if more work is expected), or "Project complete — set `status: archived` in prd.md when ready to file it away."
+- Next-step hint: `/pm:version <slug> v<N+1>` to start the next milestone (if more work is expected), or "Project complete — set `status: archived` in prd.md when ready to file it away."
 
 ## Output discipline
 - A release is a frozen artifact. Do not edit RELEASE.md after writing (the user can, but the command doesn't).

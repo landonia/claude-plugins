@@ -2,7 +2,7 @@
 description: List all projects in .pm/ with a one-line state summary each.
 ---
 
-# /pm-list — List all projects
+# /pm:list — List all projects
 
 Read-only listing of every project under `.pm/`.
 
@@ -10,7 +10,7 @@ Read-only listing of every project under `.pm/`.
 
 List every direct subdirectory of `.pm/` that contains a `prd.md` (skip hidden folders, skip `.pm/.archive/` if present).
 
-If `.pm/` doesn't exist or is empty, tell the user "No projects yet. Start one with /pm-prd <idea>." and stop.
+If `.pm/` doesn't exist or is empty, tell the user "No projects yet. Start one with /pm:prd <idea>." and stop.
 
 ## Step 2 — Summarize each
 
@@ -33,7 +33,7 @@ Projects in .pm/:
   search-redesign              drafting      v1     0/0 tasks   updated today
   legacy-archive               archived      v1     —            updated last month
 
-3 active, 1 shipped, 1 archived. Use /pm-status <slug> for details.
+3 active, 1 shipped, 1 archived. Use /pm:status <slug> for details.
 ```
 
 Sort: active first (most recently updated first within the group), then drafting, then shipped (newest first), then archived.
