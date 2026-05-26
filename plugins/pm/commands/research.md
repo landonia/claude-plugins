@@ -1,5 +1,6 @@
 ---
 description: Multi-persona research on a PRD. Orchestrator picks personas from the catalog and dispatches parallel Agent subagents; each writes a findings report.
+model: opus
 argument-hint: <slug>
 ---
 
@@ -51,7 +52,7 @@ Present the picks to the user with AskUserQuestion (multiSelect) — they can de
 
 ## Step 5 — Dispatch in parallel
 
-For each selected persona, spawn an **Agent** call (subagent_type: `general-purpose`) IN PARALLEL — issue all Agent tool calls in a single response, not one at a time.
+For each selected persona, spawn an **Agent** call (`subagent_type: general-purpose`, `model: sonnet`) IN PARALLEL — issue all Agent tool calls in a single response, not one at a time. The orchestrator (this command) runs on Opus for synthesis; personas run on Sonnet because each writes a focused ~800-word report well within Sonnet's strength, and dispatching 3–6 in parallel makes the cost difference significant.
 
 Each agent prompt MUST include:
 - The persona display name and brief (copy verbatim from `personas.md`, or use the ad-hoc framing for instantiated personas).

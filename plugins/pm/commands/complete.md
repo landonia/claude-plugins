@@ -1,5 +1,6 @@
 ---
 description: Mark a verified task as complete — commits remaining changes, pushes, opens a PR via gh, and records the PR URL on the task.
+model: sonnet
 argument-hint: [slug] [task-id] [--checkout-main]
 ---
 

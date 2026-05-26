@@ -1,5 +1,6 @@
 ---
 description: Attach an existing Jira issue to a pm task. Sets `jira_key` in the task frontmatter.
+model: sonnet
 argument-hint: <slug> [task-id] <ISSUE-KEY>
 ---
 

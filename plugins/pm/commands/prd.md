@@ -1,5 +1,6 @@
 ---
 description: Interview the user with a PM + dynamic domain SME pair to fill gaps, then draft a PRD and scaffold the project folder.
+model: opus
 argument-hint: <one-line idea>
 ---
 

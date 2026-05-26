@@ -1,5 +1,6 @@
 ---
 description: Scaffold the next version (vN+1) of a project, with a mini PRD-style interview to capture what's in scope.
+model: opus
 argument-hint: <slug> <new-version>
 ---
 

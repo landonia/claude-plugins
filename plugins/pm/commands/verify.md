@@ -1,5 +1,6 @@
 ---
 description: Independently verify a completed task against PRD, research, and acceptance criteria. Marks task done or rejected with specific notes.
+model: opus
 argument-hint: [slug] [task-id]
 ---
 

@@ -389,6 +389,38 @@ Mini-interview captures v2 scope (metered billing, annual contracts). The active
 
 ---
 
+## Model selection
+
+Each command ships with a model pre-selected for its workload, so you're not paying premium for tasks a cheaper model handles fine. The defaults strike a balance between quality where it matters (planning, verification) and cost on everything else.
+
+### Defaults
+
+| Tier | Commands | Why |
+|---|---|---|
+| **Opus** (judgment / synthesis) | `/pm:prd`, `/pm:amend`, `/pm:research`, `/pm:rerun-research`, `/pm:plan`, `/pm:replan`, `/pm:verify`, `/pm:version` | Multi-source synthesis, two-persona interviews, task decomposition with dependencies, independent acceptance-criteria judgment. |
+| **Sonnet** (code / git / mechanical) | `/pm:execute`, `/pm:complete`, `/pm:claim`, `/pm:resume`, `/pm:release`, `/pm:jira-init`, `/pm:jira-link`, `/pm:jira-create`, `/pm:jira-sync` | Code generation, git workflow, frontmatter edits, acli/gh shell-outs. Sonnet 4.6 handles these at a fraction of Opus cost. |
+| **Haiku** (read-only display) | `/pm:status`, `/pm:list`, `/pm:next` | Read frontmatter, format output, conditional sections. No judgment required. |
+
+**`/pm:research` also dispatches its persona subagents on Sonnet** (the orchestrator stays on Opus). Each persona writes a focused ~800-word report — well within Sonnet's strength — and dispatching 3–6 in parallel makes the cost difference matter.
+
+### Overriding the model for a command
+
+Use Claude Code's native command-override mechanism: drop a thin override file in your project's `.claude/commands/pm/<command>.md` (or your user-level commands directory) with just the model frontmatter:
+
+```yaml
+---
+model: opus
+---
+```
+
+Project-level files take precedence over plugin commands, so this is enough. You don't need to copy the command body — Claude Code merges the override on top of the plugin's defaults. Common overrides:
+
+- **Always use Opus for `/pm:execute`** when your project's code is particularly tricky and you want the extra rigor.
+- **Always use Sonnet for `/pm:plan`** if you trust the model and want planning to be cheaper / faster.
+- **Always use Haiku for `/pm:jira-sync`** if you have lots of issues and want the cheapest reconciliation possible.
+
+---
+
 ## Multi-developer usage
 
 The plugin works on teams, but the workflow needs to be deliberate. Headline pattern: **one lead plans, many engineers execute in parallel, branch per task, git is the concurrency control.**

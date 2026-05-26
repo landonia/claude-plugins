@@ -1,5 +1,6 @@
 ---
 description: Append a dated amendment to a project's PRD after research findings, scope changes, or stakeholder input.
+model: opus
 argument-hint: <slug>
 ---
 

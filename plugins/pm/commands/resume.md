@@ -1,5 +1,6 @@
 ---
 description: Switch back to a task's branch and pull latest. Used to come back to a task after working on something else (e.g. addressing PR comments or a verify rejection).
+model: sonnet
 argument-hint: [slug] [task-id]
 ---
 

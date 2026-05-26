@@ -1,5 +1,6 @@
 ---
 description: Create a new Jira issue from a pm task (or batch-create for all unlinked tasks). Records the issue key on the task.
+model: sonnet
 argument-hint: <slug> [task-id]
 ---
 

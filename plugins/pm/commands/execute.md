@@ -1,5 +1,6 @@
 ---
 description: Execute the next ready task (or a specified one) following stack-aware best practices. Marks task done-pending-verify on completion.
+model: sonnet
 argument-hint: [slug] [task-id]
 ---
 

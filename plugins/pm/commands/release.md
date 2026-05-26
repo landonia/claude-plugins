@@ -1,5 +1,6 @@
 ---
 description: Close out the active version of a project. Verifies all tasks are done, freezes the version folder, and writes RELEASE.md.
+model: sonnet
 argument-hint: <slug> [version]
 ---
 

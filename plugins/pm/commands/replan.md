@@ -1,5 +1,6 @@
 ---
 description: Regenerate pending tasks from an amended PRD while preserving done tasks.
+model: opus
 argument-hint: <slug>
 ---
 

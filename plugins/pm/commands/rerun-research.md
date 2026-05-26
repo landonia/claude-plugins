@@ -1,5 +1,6 @@
 ---
 description: Re-run a single research persona (useful after PRD amendments or thin output).
+model: opus
 argument-hint: <slug> <persona-slug>
 ---
 
@@ -29,7 +30,7 @@ Move `.pm/<slug>/<active_version>/research/<persona-slug>.md` to `.pm/<slug>/<ac
 
 ## Step 4 — Dispatch a single subagent
 
-Spawn ONE Agent call (subagent_type: `general-purpose`) with the same prompt structure as `/pm:research` Step 5, for just this persona. Include:
+Spawn ONE Agent call (`subagent_type: general-purpose`, `model: sonnet`) with the same prompt structure as `/pm:research` Step 5, for just this persona. Include:
 - The (possibly amended) PRD and current version goals.
 - The persona brief.
 - The path of the archived prior report, and an instruction: "Read the archived prior report and explicitly call out what's changed in your new findings vs the prior ones."

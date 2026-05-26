@@ -1,5 +1,6 @@
 ---
 description: Reconcile Jira issue statuses with current pm task state. Useful after silent sync failures or first-run on existing projects.
+model: sonnet
 argument-hint: [slug]
 ---
 

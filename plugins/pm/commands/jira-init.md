@@ -1,5 +1,6 @@
 ---
 description: Set up Jira integration for a project. Writes .pm/<slug>/.jira.yml interactively; verifies acli is installed and authenticated.
+model: sonnet
 argument-hint: [slug]
 ---
 

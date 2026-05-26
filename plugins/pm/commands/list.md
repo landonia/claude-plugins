@@ -1,5 +1,6 @@
 ---
 description: List all projects in .pm/ with a one-line state summary each.
+model: haiku
 ---
 
 # /pm:list — List all projects

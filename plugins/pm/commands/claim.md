@@ -1,5 +1,6 @@
 ---
 description: Claim a task for yourself — creates the branch, flips status to in-progress, sets assignee, commits and pushes so the claim is visible to teammates.
+model: sonnet
 argument-hint: [slug] [task-id] [--force]
 ---
 

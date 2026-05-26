@@ -1,5 +1,6 @@
 ---
 description: Generate ordered task files with frontmatter from the PRD and research, including dependencies and acceptance criteria.
+model: opus
 argument-hint: <slug>
 ---
 

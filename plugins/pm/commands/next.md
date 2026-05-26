@@ -1,5 +1,6 @@
 ---
 description: Peek at the next ready task without executing it.
+model: haiku
 argument-hint: [slug]
 ---
 

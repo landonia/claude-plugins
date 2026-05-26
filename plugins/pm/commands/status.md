@@ -1,5 +1,6 @@
 ---
 description: Print a project dashboard — PRD title, version state, task counts, next ready task, blockers.
+model: haiku
 argument-hint: [slug]
 ---
 
