@@ -50,7 +50,10 @@ Before writing, show the user the exact text being appended. Apply any requested
 
 ## Step 5 — Hand off
 
-After writing, suggest the appropriate next step based on the user's answer to "does this affect pending tasks?":
+After writing, look at the amendment text and check whether it touches **architecture concerns** — telltale words like "switch from X to Y" (database, queue, framework, hosting), "add a queue", "multi-region", "stateless", "async", "GraphQL", "REST", "tenancy", "auth provider", "horizontal scaling", "microservice", "monolith". If it does, also suggest `/pm:architect <slug>` (amend mode) so the architecture decisions get updated in sync — not just the PRD prose.
+
+Then suggest the appropriate next step based on the user's answer to "does this affect pending tasks?":
+- **Yes + architecture-touching:** suggest `/pm:architect <slug>` first, then `/pm:replan <slug>` once architecture decisions are updated.
 - **Yes:** suggest `/pm:replan <slug>` (regenerates pending tasks from the amended PRD).
 - **Unsure:** suggest `/pm:status <slug>` to review current state, then decide.
 - **No:** print confirmation and stop.

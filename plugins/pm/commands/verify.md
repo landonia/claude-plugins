@@ -50,6 +50,7 @@ For each criterion in the task frontmatter, judge **pass / fail / partial / unve
 Beyond the literal criteria, check:
 - **Scope compliance:** Did the implementation stay within the task's `## Out of scope`? Surface any drift.
 - **PRD alignment:** Does the work match `prd_refs` sections? Note divergences.
+- **Architecture compliance:** Does the implementation follow `architecture.md` decisions — the documented stack picks, sync/async split, multi-tenancy model, API style, queue/database tech, auth model — or did it silently substitute something else? Drift from architecture is a **REJECT** unless the executor surfaced the conflict and got the architecture amended first. Cite the violated section(s) (`architecture.md §N`) in your notes.
 - **Research compliance:** Did the implementation follow the research recommendations (or have a documented reason not to)? Note gotchas from research that may have been missed.
 - **Stack conventions:** Does the code follow the project's CLAUDE.md, applicable skills (e.g. java-guidelines), and patterns visible elsewhere in the repo?
 - **Tests:** If criteria implied tests, are they real, asserting the right thing, and passing?

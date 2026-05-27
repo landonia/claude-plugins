@@ -21,6 +21,7 @@ Required artifacts:
 - `.pm/<slug>/prd.md` — REQUIRED. If missing, stop and tell the user to run `/pm:prd`.
 - `.pm/<slug>/<active_version>/goals.md` — REQUIRED.
 - `.pm/<slug>/<active_version>/research/` — RECOMMENDED. If empty or missing, warn: "No research found. Recommend running /pm:research <slug> first. Proceed anyway? (y/N)".
+- `.pm/<slug>/<active_version>/architecture.md` — RECOMMENDED. If missing, warn: "No architecture decisions found. Recommend running /pm:architect <slug> first (decides stack and topology). Proceed anyway? (y/N)".
 
 If `.pm/<slug>/<active_version>/tasks/` already has files, STOP and tell the user to use `/pm:replan <slug>` instead (which preserves done tasks).
 
@@ -29,6 +30,7 @@ If `.pm/<slug>/<active_version>/tasks/` already has files, STOP and tell the use
 Read:
 - `prd.md` (including any Amendments)
 - `<active_version>/goals.md`
+- `<active_version>/architecture.md` (if present — including its Amendments)
 - Every file in `<active_version>/research/` (if present)
 
 ## Step 4 — Draft the task list
@@ -39,6 +41,7 @@ Decompose the work into atomic, executable tasks. Rules:
 - Use **3-digit zero-padded IDs** (`001`, `002`, …) — keeps files sorted alphabetically.
 - Slugify the title for the filename: `001-set-up-postgres-schema.md`.
 - Reference PRD/goals/research sections in `prd_refs` so the executor and verifier know what to read.
+- Cite `architecture.md` sections in `arch_refs` when a task's implementation is driven by a specific architecture decision (queue tech, multi-tenancy model, API style, stack pick, etc.) — keeps the executor anchored to what's been decided.
 - Acceptance criteria must be **observable** — something the verifier can check, not a vague aspiration.
 
 Present the drafted list as a table to the user before writing files:
@@ -70,6 +73,9 @@ depends_on: []           # list of task ids as strings, e.g. ["001", "002"]
 prd_refs:                # list of section references
   - "prd.md §3.1"
   - "goals.md §What ships"
+arch_refs:               # architecture.md sections that bind this task's design; [] if none
+  - "architecture.md §3 Sync vs async work"
+  - "architecture.md §12 Tech stack"
 research_refs:           # research files that informed this task; [] if none
   - "research/security-architect.md §Findings 2"
 acceptance_criteria:

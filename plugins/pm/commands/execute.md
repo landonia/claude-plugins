@@ -54,9 +54,11 @@ If no `assignee` is set but you intend to make changes in a team setting, gently
 Read in this order:
 1. `.pm/<slug>/prd.md` — full file, including Amendments.
 2. `.pm/<slug>/<active_version>/goals.md`.
-3. The task file itself — frontmatter and all body sections (Task, Implementation notes, Out of scope, Verifier notes).
-4. Every research file referenced in the task's `research_refs`, plus `<active_version>/research/_index.md` for orientation.
-5. If the task is `rejected`, the `## Verifier notes` section is critical — those gaps MUST be addressed this round.
+3. `.pm/<slug>/<active_version>/architecture.md` — full file if present, including its Amendments. **The architecture decisions are binding.** If the task is going to require deviating from any documented decision (different DB, different queue, different framework, etc.), STOP and surface the conflict to the user before writing code — don't silently substitute. The architect chose what to use; the executor implements within those constraints.
+4. The task file itself — frontmatter and all body sections (Task, Implementation notes, Out of scope, Verifier notes).
+5. The architecture sections listed in the task's `arch_refs` (re-read with focus; these are the decisions the task is most directly bound by).
+6. Every research file referenced in the task's `research_refs`, plus `<active_version>/research/_index.md` for orientation.
+7. If the task is `rejected`, the `## Verifier notes` section is critical — those gaps MUST be addressed this round.
 
 ## Step 3 — Detect stack and load skills
 

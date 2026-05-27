@@ -28,6 +28,7 @@ If there are no candidates, stop and tell the user "Nothing to replan — no pen
 Read the full current state:
 - `prd.md` (including Amendments)
 - `<active_version>/goals.md`
+- `<active_version>/architecture.md` (if present — including Amendments; replanning must respect documented architecture decisions)
 - All files in `<active_version>/research/`
 - The bodies of the preserved tasks (so the new plan knows what's already done and doesn't redo it)
 
