@@ -17,6 +17,8 @@ From this marketplace:
 
 All commands are namespaced under the plugin — invoke them as `/pm:<command>` (e.g. `/pm:prd`, `/pm:execute`). The `pm:` prefix prevents collisions with other plugins.
 
+> **Note on commands vs skills.** Pm ships its commands as flat `commands/*.md` files. After Claude Code merged custom commands into the skills system ([docs](https://code.claude.com/docs/en/skills.md)), commands appear in the unified "available skills" list — but they are still commands, not skill directories, and the flat layout is fully supported. The flat form is preferred for user-invoked commands like these (every pm command is typed with arguments, e.g. `/pm:claim 003`).
+
 ---
 
 ## Mental model
