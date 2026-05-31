@@ -37,3 +37,35 @@ Project management pipeline for large/complex work: PRD interview, multi-persona
 /plugin install pm@landonia-plugins
 ```
 
+## Releasing
+
+Each plugin has its own version, changelog, tag, and GitHub release. Versioning is automated by [release-please](https://github.com/googleapis/release-please) — you don't bump `plugin.json` by hand.
+
+### Commit format
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) with the plugin folder name as the scope:
+
+```
+feat(pm): add /pm:architect step
+fix(java-guidelines): correct Spring Boot version
+docs(interaction-logger): clarify log format
+chore: update CI
+```
+
+Bump rules:
+
+| Commit prefix | Effect |
+|---|---|
+| `feat(<plugin>): ...` | minor bump for that plugin |
+| `fix(<plugin>): ...` | patch bump for that plugin |
+| `feat(<plugin>)!: ...` or `BREAKING CHANGE:` footer | major bump |
+| `docs:` / `chore:` / `refactor:` / `test:` / `build:` / `ci:` | no version bump |
+
+Top-level changes (root README, marketplace.json, etc.) use `chore:` / `docs:` without a plugin scope and don't bump any plugin — that's intentional.
+
+### How a release happens
+
+1. Push a `feat(...)` or `fix(...)` commit to `main`.
+2. The release-please workflow opens (or updates) a release PR titled `chore: release ...` that bumps the affected plugin's `plugin.json`, appends a `CHANGELOG.md` entry, and updates `.release-please-manifest.json`.
+3. Review the PR; merge when ready.
+4. The merge triggers release-please to tag the affected plugin(s) (e.g. `pm-v1.1.0`) and create a GitHub release with the changelog as the body.
