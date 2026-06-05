@@ -53,14 +53,15 @@ Each task file is markdown with YAML frontmatter capturing `status`, `depends_on
 
 ```
 /pm:prd  →  /pm:research  →  /pm:architect  →  /pm:plan  →  /pm:claim  →  /pm:execute  →  /pm:verify  →  /pm:complete
-   ▲                                                                          ▲                  │              │
-   │                                                                          │                  ▼              ▼
-   │                                                                       /pm:resume       (rejected)    PR opened, merge
-   │                                                                                                            │
+   ▲                                                                          ▲       ▲          │              │
+   │                                                                          │       │          ▼              ▼
+   │                                                                       /pm:resume │     (rejected)    PR opened, merge
+   │                                                                                  │                          │
+   │                                                                              /pm:handoff                    │
    /pm:amend  ──→  /pm:replan                                                                /pm:release  →  /pm:version v2
 ```
 
-`/pm:architect` consolidates the research into concrete architecture and tech-stack decisions (the file `architecture.md` is then read by `/pm:plan`, `/pm:execute`, and `/pm:verify` as the source of truth). `/pm:claim` is optional for solo work and recommended for multi-developer teams — it makes your "I'm working on this" visible to teammates via git so two people don't double-implement the same task. `/pm:complete` opens the PR after `/pm:verify` accepts, and `/pm:resume` brings you back to a task's branch when you need to (e.g. PR feedback). You can skip stages (`/pm:plan` will warn if there's no research or architecture but proceed) — the structure is opinionated, not rigid.
+`/pm:architect` consolidates the research into concrete architecture and tech-stack decisions (the file `architecture.md` is then read by `/pm:plan`, `/pm:execute`, and `/pm:verify` as the source of truth). `/pm:claim` is optional for solo work and recommended for multi-developer teams — it makes your "I'm working on this" visible to teammates via git so two people don't double-implement the same task. `/pm:complete` opens the PR after `/pm:verify` accepts, and `/pm:resume` brings you back to a task's branch when you need to (e.g. PR feedback). `/pm:handoff` captures mid-task context when you need to stop before a task is done, so the next session (yourself later, or a teammate) can pick up without re-deriving where you left off. You can skip stages (`/pm:plan` will warn if there's no research or architecture but proceed) — the structure is opinionated, not rigid.
 
 *Optional: if Jira is enabled for the project (via `/pm:jira-init`), the same flow also pushes status to your Jira board — `/pm:claim` moves the linked issue to In Progress, `/pm:verify` to In Review, `/pm:complete` adds the PR URL as a comment, `/pm:version` creates a per-version epic, and `/pm:release` closes it. See [Jira integration](#jira-integration-optional) below.*
 
@@ -174,7 +175,21 @@ Status transitions: flips to `in-progress` when work starts, `done-pending-verif
 
 Honors claims: if you `/pm:execute` a task someone else has claimed, the command refuses unless you pass `--force` (the safe default in teams). Use `/pm:claim ... --force` to take over the claim cleanly, or `/pm:execute ... --force` to bypass the check if you've coordinated out-of-band.
 
-If a previously rejected task is picked up, the executor reads the existing `## Verifier notes` and addresses each gap, then writes a `## Re-execution notes` section explaining how.
+If a previously rejected task is picked up, the executor reads the existing `## Verifier notes` and addresses each gap, then writes a `## Re-execution notes` section explaining how. If the task body contains `## Handoff notes` from a prior mid-task pause, the executor reads those too and uses them as advisory context (not binding like verifier notes) — see `/pm:handoff` below.
+
+#### `/pm:handoff [slug] [task-id]`
+Pauses an in-progress task and writes a handoff note onto the task file so the next session — yourself later, or a teammate — can pick up without re-deriving where you left off. The handoff captures only the **ephemeral, in-flight context** that isn't anywhere else: approach taken so far, what's committed vs uncommitted, concrete next steps, and gotchas surfaced during implementation that no planning document anticipated. It does NOT repeat the PRD, research, or architecture — those are already on disk and re-read by the next `/pm:execute`.
+
+```
+/pm:handoff usage-billing                  # auto-picks your current in-progress task
+/pm:handoff usage-billing 003              # handoff a specific task
+```
+
+Refuses if the task isn't `in-progress` (handoffs only apply to active work), if you're on the wrong branch (run `/pm:resume` first), or if there's no remote (the handoff has to be visible). The command synthesises a draft from your current session, shows it to you for review/edit before writing, then commits and pushes **just the task file** — your uncommitted implementation changes stay in the working tree by design (they're what the handoff describes; the next executor inherits them via the branch state).
+
+Status stays `in-progress` and the assignee/branch are unchanged — a handoff is **context-passing, not ownership transfer**. To actually hand the work to a teammate, they run `/pm:claim <slug> <NNN> --force` from their machine to take over the claim cleanly; the handoff notes are already on the branch waiting for them.
+
+The next `/pm:execute` automatically picks up handoff notes as part of normal task body reading — no flag required.
 
 #### `/pm:verify [slug] [task-id]`
 A Senior QA / Tech Lead persona that **independently** verifies the work. Reads the PRD, research, task, and the actual diff (`git status` / `git diff`). Runs tests if the implementation summary specifies a command. Judges each acceptance criterion as PASS / FAIL / PARTIAL / UNVERIFIABLE with evidence.
@@ -426,7 +441,7 @@ Each command ships with a model pre-selected for its workload, so you're not pay
 
 | Tier | Commands | Why |
 |---|---|---|
-| **Opus** (judgment / synthesis) | `/pm:prd`, `/pm:amend`, `/pm:research`, `/pm:rerun-research`, `/pm:architect`, `/pm:plan`, `/pm:replan`, `/pm:verify`, `/pm:version` | Multi-source synthesis, two-persona interviews, architecture and task decomposition with dependencies, independent acceptance-criteria judgment. |
+| **Opus** (judgment / synthesis) | `/pm:prd`, `/pm:amend`, `/pm:research`, `/pm:rerun-research`, `/pm:architect`, `/pm:plan`, `/pm:replan`, `/pm:verify`, `/pm:handoff`, `/pm:version` | Multi-source synthesis, two-persona interviews, architecture and task decomposition with dependencies, independent acceptance-criteria judgment, distilling session context into a useful handoff. |
 | **Sonnet** (code / git / mechanical) | `/pm:execute`, `/pm:complete`, `/pm:claim`, `/pm:resume`, `/pm:release`, `/pm:jira-init`, `/pm:jira-link`, `/pm:jira-create`, `/pm:jira-sync` | Code generation, git workflow, frontmatter edits, acli/gh shell-outs. Sonnet 4.6 handles these at a fraction of Opus cost. |
 | **Haiku** (read-only display) | `/pm:status`, `/pm:list`, `/pm:next` | Read frontmatter, format output, conditional sections. No judgment required. |
 
@@ -465,6 +480,9 @@ Convention: `pm/<slug>/<task-id>-<short-slug>` (e.g. `pm/usage-billing/003-strip
 **3. Claim before you execute.**
 Run `/pm:claim <slug>` (or `/pm:claim <slug> <id>` for a specific task). It pulls latest, creates the `pm/<slug>/<id>-<slug>` branch, flips status to `in-progress`, sets `assignee` from your git config, commits, and pushes — all in one step. Teammates running `/pm:next` or `/pm:status` immediately see the task is taken. If two people race, the second push is rejected by git and that engineer picks another task. Optimistic locking via git, no central server.
 
+**3a. Handing a task to a teammate mid-flight.**
+If you need to stop mid-task and pass the work to someone else (going on leave, end of sprint, hit a domain wall), the clean two-step is `/pm:handoff <slug> <id>` (captures your in-flight context onto the task body and pushes) followed by your teammate running `/pm:claim <slug> <id> --force` from their machine (takes over the claim and assignee). They then `/pm:execute` and pick up the handoff notes as part of normal task body reading — no flag, no out-of-band coordination. The same `/pm:handoff` step is also useful solo: when context runs out at end of day, leave a handoff for tomorrow-you.
+
 **4. Verification has two layers.**
 - `/pm:verify` (Claude-as-verifier) — run by the executor or a teammate. Independent context, checks against PRD + acceptance criteria. Writes verifier notes into the task file.
 - **PR review** (human) — on top of Claude's verdict. The reviewer sees the task, Claude verifier notes, diff, and test results in one PR and focuses on judgment calls Claude can't make: architectural fit, team conventions, business risk.
@@ -487,6 +505,7 @@ Same as initial planning — one person scaffolds vN with team input.
 | `/pm:plan`            | Lead, with team review of the task table |
 | `/pm:claim`           | Any engineer, before executing           |
 | `/pm:execute`         | Any engineer, after `/pm:claim`          |
+| `/pm:handoff`         | Any engineer, when stopping mid-task     |
 | `/pm:verify`          | Executor (fast) or teammate (rigorous)   |
 | `/pm:complete`        | Any engineer, after `/pm:verify` accepts |
 | `/pm:resume`          | Any engineer, to return to a task        |

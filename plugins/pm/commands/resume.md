@@ -75,6 +75,8 @@ Then a context-aware next-step hint based on status:
 - **`rejected`** → "Next: /pm:execute <slug> <NNN> — address the Verifier notes" + print the most recent `## Verifier notes` section.
 - **`done`** with `pr_url` set → "Next: address PR comments locally, commit, then `git push` to update the PR. (Or /pm:complete <slug> <NNN> if you want to re-record the PR URL after fixes.)"
 
+Additionally, **for any status**, if the task body contains one or more `## Handoff notes — <date>` sections, print the most recent one in full after the next-step hint. A handoff captured by a prior session is exactly the orientation a resuming session needs. Don't print earlier handoffs — only the most recent — and don't print handoff notes if the most recent body section is a later `## Verifier notes` or `## Implementation summary` (those supersede a stale handoff for next-step purposes; the handoff stays in the file as history but isn't re-surfaced).
+
 ## Output discipline
 
 - Read-only on the task file. Don't change `status`, `assignee`, or any other field — resuming is a navigation action, not a state change.

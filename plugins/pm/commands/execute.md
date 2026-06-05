@@ -59,6 +59,7 @@ Read in this order:
 5. The architecture sections listed in the task's `arch_refs` (re-read with focus; these are the decisions the task is most directly bound by).
 6. Every research file referenced in the task's `research_refs`, plus `<active_version>/research/_index.md` for orientation.
 7. If the task is `rejected`, the `## Verifier notes` section is critical — those gaps MUST be addressed this round.
+8. If the task body contains one or more `## Handoff notes — <date>` sections, read them in chronological order. These were written by a prior executor stopping mid-task; they describe the approach taken, current state of the branch, next steps the prior executor planned, and gotchas surfaced during implementation that no planning document anticipated. Treat them as **advisory, not binding** — the verifier notes (if any) are the binding contract, the handoff notes are background context.
 
 ## Step 3 — Detect stack and load skills
 
@@ -88,6 +89,7 @@ Now do the work. Discipline:
 - **Follow stack guidelines.** If a skill triggered, follow its conventions exactly. If not, follow patterns visible in the existing repo. If neither, follow standard idioms for the language.
 - **Test where appropriate.** If the task's acceptance criteria include tests or the repo has a test suite, write/update tests as part of the implementation. Don't add tests if the task explicitly excludes them in `## Out of scope`.
 - **Tell the user when you change direction.** If mid-implementation you realize the approach in the task is wrong, surface it before completing — don't quietly invent a new design.
+- **If handoff notes were present, honor them with judgment.** Use the prior executor's `Next steps` as your starting plan, but don't follow them blindly: if their `Gotchas` or `Open questions` reveal that the prior approach was hitting a wall, take the lesson and pick a better path. The handoff is context, not orders. When you finish, append a brief `## Continuation notes — <date>` section (above `## Implementation summary`) summarising which handoff items you picked up, which you deferred, and why — this parallels how `## Re-execution notes` close the loop on verifier notes.
 
 ## Step 6 — Self-check before finishing
 
