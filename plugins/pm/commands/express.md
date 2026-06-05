@@ -244,6 +244,7 @@ Decompose the work into **1–5 tasks**, biased toward fewer/larger. Rules:
 - `arch_refs: []` (express doesn't produce binding architecture).
 - `research_refs`: point at the one persona file from Step 3 with specific section refs, or `[]` if research was skipped.
 - Acceptance criteria must be **observable** — something the verifier can check.
+- **Note parallelizable structure when obvious.** If a task has multiple independent sub-units (similar adapters, unrelated call sites, independent boilerplate), call it out in `## Implementation notes` so the executor knows it's a candidate for parallel Agent subagent dispatch. Advisory — the executor makes the final call.
 
 **Soft cap of 5 tasks.** If your draft needs more than 5, surface it:
 

@@ -192,6 +192,8 @@ The specialist coding agent. Runs in your main thread so you can intervene mid-t
 
 Status transitions: flips to `in-progress` when work starts, `done-pending-verify` when complete. Appends an `## Implementation summary` to the task body listing files changed, criterion-by-criterion satisfaction with `file:line` evidence, and notes for the verifier.
 
+When a task has independent sub-units (multiple similar adapters, unrelated call sites, separate boilerplate files), the executor dispatches them as **parallel Agent subagents in a single message** rather than implementing serially — a meaningful speedup on suitably-shaped work. The decision is the executor's: planning commands can flag obvious parallelism in the task's `## Implementation notes`, but the executor sees the actual code and chooses. Serial reasoning chains (schema → migration → code) and shared-file refactors stay serial; parallel dispatch only fires when independence is genuinely obvious. The Implementation summary lists which subagents ran so the verifier and PR reviewer can see the breakdown.
+
 Honors claims: if you `/pm:execute` a task someone else has claimed, the command refuses unless you pass `--force` (the safe default in teams). Use `/pm:claim ... --force` to take over the claim cleanly, or `/pm:execute ... --force` to bypass the check if you've coordinated out-of-band.
 
 If a previously rejected task is picked up, the executor reads the existing `## Verifier notes` and addresses each gap, then writes a `## Re-execution notes` section explaining how. If the task body contains `## Handoff notes` from a prior mid-task pause, the executor reads those too and uses them as advisory context (not binding like verifier notes) — see `/pm:handoff` below.

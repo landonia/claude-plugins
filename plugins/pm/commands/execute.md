@@ -86,6 +86,7 @@ Now do the work. Discipline:
 - **Stay in scope.** The task's `## Out of scope` and the verifier notes (if rejected) define the boundary. Don't refactor adjacent code unless the task says to. Don't add features the PRD doesn't ask for.
 - **Acceptance criteria first.** Every criterion in the frontmatter must be satisfiable. If you discover a criterion is impossible or ambiguous, STOP and surface it — don't silently change the bar.
 - **Use TaskCreate** to break the implementation into substeps if the task is multi-file or multi-step. Keep substeps tight; tick them off as you go.
+- **Dispatch parallel Agent subagents when the work has independent sub-units.** If the task naturally decomposes into N pieces that don't depend on each other — e.g. implementing 4 similar adapters for 4 different APIs, updating multiple unrelated call sites, writing tests for several independent modules, exploring candidate libraries before picking one — dispatch them as **parallel Agent tool calls in a single message** rather than running serially. Independence requires: no shared mutable state (no two subagents editing the same file), no inter-sub-unit dependencies (B doesn't need A's output), and each piece self-contained enough for a subagent to complete in one pass. Each subagent brief should include the task's PRD/research/architecture context (so it isn't blind), the specific sub-unit it owns, the acceptance criterion (or criteria) it satisfies, and an explicit "out of scope" boundary. After subagents return, you (the main executor) **synthesize, review, and integrate** — don't trust subagent self-reports blindly; check the file:line evidence each one provides, run tests, resolve any conflicts at integration. List which subagents ran in the Implementation summary (Step 7). **When NOT to parallelize:** sequential reasoning chains (schema → migration → code → test); refactors that thread through the codebase (renames, signature changes touching shared files); small tasks where dispatch overhead exceeds the time saved; speculation when the right approach is unclear until you've started writing. Default to serial; parallelize only when independence is obvious. If the task's `## Implementation notes` flags parallel sub-units, treat that as a strong hint to consider parallel dispatch.
 - **Follow stack guidelines.** If a skill triggered, follow its conventions exactly. If not, follow patterns visible in the existing repo. If neither, follow standard idioms for the language.
 - **Test where appropriate.** If the task's acceptance criteria include tests or the repo has a test suite, write/update tests as part of the implementation. Don't add tests if the task explicitly excludes them in `## Out of scope`.
 - **Tell the user when you change direction.** If mid-implementation you realize the approach in the task is wrong, surface it before completing — don't quietly invent a new design.
@@ -108,6 +109,10 @@ Update the task file:
 ## Implementation summary
 **Files changed:**
 - path/to/file.ext — what changed and why
+
+**Parallel subagents:** <omit this block if work was serial; otherwise:>
+- <subagent focus / sub-unit> — <what it produced; file:line evidence>
+- <subagent focus / sub-unit> — <what it produced; file:line evidence>
 
 **Acceptance criteria check:**
 - [x] <criterion 1> — satisfied by <file:line / test name>

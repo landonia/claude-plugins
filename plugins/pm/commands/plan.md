@@ -43,6 +43,7 @@ Decompose the work into atomic, executable tasks. Rules:
 - Reference PRD/goals/research sections in `prd_refs` so the executor and verifier know what to read.
 - Cite `architecture.md` sections in `arch_refs` when a task's implementation is driven by a specific architecture decision (queue tech, multi-tenancy model, API style, stack pick, etc.) — keeps the executor anchored to what's been decided.
 - Acceptance criteria must be **observable** — something the verifier can check, not a vague aspiration.
+- **Note parallelizable structure when obvious.** If a task has multiple independent sub-units (similar adapters across different APIs, several unrelated call sites, independent boilerplate files, etc.), call it out in `## Implementation notes` so the executor knows it's a candidate for parallel Agent subagent dispatch. This is advisory — the executor sees the actual code and makes the final call. Don't reach for it on tasks with sequential reasoning (schema → migration → code) or shared-file refactors.
 
 Present the drafted list as a table to the user before writing files:
 
