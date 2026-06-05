@@ -52,16 +52,19 @@ Each task file is markdown with YAML frontmatter capturing `status`, `depends_on
 ### The flow
 
 ```
-/pm:prd  →  /pm:research  →  /pm:architect  →  /pm:plan  →  /pm:claim  →  /pm:execute  →  /pm:verify  →  /pm:complete
-   ▲                                                                          ▲       ▲          │              │
-   │                                                                          │       │          ▼              ▼
-   │                                                                       /pm:resume │     (rejected)    PR opened, merge
-   │                                                                                  │                          │
-   │                                                                              /pm:handoff                    │
+/pm:prd  →  /pm:research  →  /pm:architect  →  /pm:plan  ─┐
+                                                          ├→  /pm:claim  →  /pm:execute  →  /pm:verify  →  /pm:complete
+/pm:express  (fast-path for small projects)  ─────────────┘                     ▲       ▲          │              │
+                                                                                │       │          ▼              ▼
+                                                                            /pm:resume  │     (rejected)    PR opened, merge
+                                                                                        │                          │
+                                                                                    /pm:handoff                    │
    /pm:amend  ──→  /pm:replan                                                                /pm:release  →  /pm:version v2
 ```
 
 `/pm:architect` consolidates the research into concrete architecture and tech-stack decisions (the file `architecture.md` is then read by `/pm:plan`, `/pm:execute`, and `/pm:verify` as the source of truth). `/pm:claim` is optional for solo work and recommended for multi-developer teams — it makes your "I'm working on this" visible to teammates via git so two people don't double-implement the same task. `/pm:complete` opens the PR after `/pm:verify` accepts, and `/pm:resume` brings you back to a task's branch when you need to (e.g. PR feedback). `/pm:handoff` captures mid-task context when you need to stop before a task is done, so the next session (yourself later, or a teammate) can pick up without re-deriving where you left off. You can skip stages (`/pm:plan` will warn if there's no research or architecture but proceed) — the structure is opinionated, not rigid.
+
+`/pm:express` is the sanctioned fast path for **small projects** — a single-purpose feature, a focused fix, a one-shot prototype. One command runs a compressed PRD interview (PM persona only), picks one research persona if useful, lets you defer architecture if it's not strictly necessary, and generates 1–5 tasks. The artifacts it writes are the same shape the full pipeline produces, so `/pm:claim`, `/pm:execute`, `/pm:verify`, `/pm:complete`, and `/pm:handoff` work against express output unchanged. If scope grows later, graduate by running `/pm:research`, `/pm:architect`, and `/pm:replan` in place.
 
 *Optional: if Jira is enabled for the project (via `/pm:jira-init`), the same flow also pushes status to your Jira board — `/pm:claim` moves the linked issue to In Progress, `/pm:verify` to In Review, `/pm:complete` adds the PR URL as a comment, `/pm:version` creates a per-version epic, and `/pm:release` closes it. See [Jira integration](#jira-integration-optional) below.*
 
@@ -79,6 +82,22 @@ Two personas — a Senior PM and a dynamically-picked domain SME — interview y
 ```
 
 You'll get tagged questions like `[PM] Who are the primary users — engineers running ad-hoc exports, or ops teams setting up scheduled pipelines?` and `[SME-data-platform] What data sources are in scope — S3, RDS, warehouses, or all of the above?` After 2–4 rounds, the PRD is drafted and shown to you for edits before writing.
+
+#### `/pm:express "<one-line idea>"`
+Fast-path planning for small projects, all in one command. Compressed PM interview (no domain SME), one light research persona (smart-picked: codebase-archaeologist on brownfield, PRD-signal pick on greenfield, or skipped entirely), architecture deferred unless the project is greenfield with non-trivial stack signals, and 1–5 tasks biased toward fewer/larger.
+
+```
+/pm:express "add a /pm:metrics command that prints tokens consumed per command"
+/pm:express "tiny CLI that prints today's weather from a public API"
+```
+
+Use it when the work is a single-purpose feature or a focused fix that you'd realistically expect to ship in 1–5 task-sized chunks. Express writes the same files the full pipeline does — `prd.md`, `v1/goals.md`, optionally `v1/research/<persona>.md`, and task files — so `/pm:claim`, `/pm:execute`, `/pm:verify`, `/pm:complete`, `/pm:handoff`, and `/pm:resume` all work against express output unchanged. The PRD frontmatter carries an `express: true` marker so the project's origin is visible.
+
+Tasks generated by express have `arch_refs: []` (express doesn't write `architecture.md`), so the verifier's architecture-drift check is bypassed cleanly — no stub or placeholder architecture is ever written.
+
+**Safety gates:** If the scope-cap question reveals the work isn't small, express asks whether to continue or graduate to `/pm:prd`. If the task draft would exceed 5, it surfaces a graduation option to `/pm:plan`. On greenfield projects with non-trivial stack signals (multi-tenancy, distributed, real-time, full SaaS), it stops and recommends running `/pm:architect` first.
+
+**Graduation:** If express turns out to be insufficient (scope grew, architecture decisions surfaced, more research is needed), run the corresponding full-pipeline commands in place: `/pm:research <slug>` adds more personas additively, `/pm:architect <slug>` runs the architecture interview from scratch, and `/pm:replan <slug>` regenerates pending tasks against the new artifacts while preserving anything already done or in flight.
 
 #### `/pm:amend <slug>`
 Append a dated, append-only amendment to the PRD. Use after research surfaces something that changes scope, or when stakeholders shift requirements mid-flight.
@@ -441,7 +460,7 @@ Each command ships with a model pre-selected for its workload, so you're not pay
 
 | Tier | Commands | Why |
 |---|---|---|
-| **Opus** (judgment / synthesis) | `/pm:prd`, `/pm:amend`, `/pm:research`, `/pm:rerun-research`, `/pm:architect`, `/pm:plan`, `/pm:replan`, `/pm:verify`, `/pm:handoff`, `/pm:version` | Multi-source synthesis, two-persona interviews, architecture and task decomposition with dependencies, independent acceptance-criteria judgment, distilling session context into a useful handoff. |
+| **Opus** (judgment / synthesis) | `/pm:prd`, `/pm:express`, `/pm:amend`, `/pm:research`, `/pm:rerun-research`, `/pm:architect`, `/pm:plan`, `/pm:replan`, `/pm:verify`, `/pm:handoff`, `/pm:version` | Multi-source synthesis, two-persona interviews, architecture and task decomposition with dependencies, independent acceptance-criteria judgment, distilling session context into a useful handoff. Express runs PRD interview, persona selection, and task decomposition in one pass — compression is high-judgment work. |
 | **Sonnet** (code / git / mechanical) | `/pm:execute`, `/pm:complete`, `/pm:claim`, `/pm:resume`, `/pm:release`, `/pm:jira-init`, `/pm:jira-link`, `/pm:jira-create`, `/pm:jira-sync` | Code generation, git workflow, frontmatter edits, acli/gh shell-outs. Sonnet 4.6 handles these at a fraction of Opus cost. |
 | **Haiku** (read-only display) | `/pm:status`, `/pm:list`, `/pm:next` | Read frontmatter, format output, conditional sections. No judgment required. |
 
@@ -473,6 +492,8 @@ The plugin works on teams, but the workflow needs to be deliberate. Headline pat
 
 **1. One lead initiates the planning.**
 `/pm:prd`, `/pm:research`, `/pm:plan` are sequential and synthesize input — running them in parallel produces conflicting PRDs and task lists. One person runs them (often after a kickoff meeting), opens a PR with the `.pm/<slug>/` folder, the team reviews and merges. After that, the planning artifacts are shared source of truth.
+
+**`/pm:express` is a solo / small-team tool.** It's appropriate when one engineer is scoping a focused piece of work themselves — a small feature, a fix, a prototype — and doesn't need a kickoff meeting to decide what to build. For larger work the full pipeline's PR-driven planning review is still the right pattern; express skips that review by design.
 
 **2. Branch per task.**
 Convention: `pm/<slug>/<task-id>-<short-slug>` (e.g. `pm/usage-billing/003-stripe-webhooks`). The task file IS the PR description — it has the goals, acceptance criteria, research links, and (after `/pm:execute`) the implementation summary. Reviewers get full context for free.
