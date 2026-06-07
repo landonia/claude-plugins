@@ -32,6 +32,7 @@ Every project lives under `.pm/<project-slug>/` in your repo. The folder is comm
 ├── v1/
 │   ├── goals.md        # what v1 delivers (cut from PRD)
 │   ├── architecture.md # architecture + tech-stack decisions for v1
+│   ├── testing.md      # test strategy for v1 (optional)
 │   ├── research/
 │   │   ├── _index.md
 │   │   ├── security-architect.md
@@ -43,6 +44,7 @@ Every project lives under `.pm/<project-slug>/` in your repo. The folder is comm
 └── v2/
     ├── goals.md
     ├── architecture.md # carried forward from v1, amended for v2
+    ├── testing.md      # carried forward from v1 (optional)
     ├── research/
     └── tasks/
 ```
@@ -52,17 +54,17 @@ Each task file is markdown with YAML frontmatter capturing `status`, `depends_on
 ### The flow
 
 ```
-/pm:prd  →  /pm:research  →  /pm:architect  →  /pm:plan  ─┐
-                                                          ├→  /pm:claim  →  /pm:execute  →  /pm:verify  →  /pm:complete
-/pm:express  (fast-path for small projects)  ─────────────┘                     ▲       ▲          │              │
-                                                                                │       │          ▼              ▼
-                                                                            /pm:resume  │     (rejected)    PR opened, merge
-                                                                                        │                          │
-                                                                                    /pm:handoff                    │
-   /pm:amend  ──→  /pm:replan                                                                /pm:release  →  /pm:version v2
+/pm:prd  →  /pm:research  →  /pm:architect  →  (/pm:test)  →  /pm:plan  ─┐
+                                                                         ├→  /pm:claim  →  /pm:execute  →  /pm:verify  →  /pm:complete
+/pm:express  (fast-path for small projects)  ────────────────────────────┘                     ▲       ▲          │              │
+                                                                                               │       │          ▼              ▼
+                                                                                           /pm:resume  │     (rejected)    PR opened, merge
+                                                                                                       │                          │
+                                                                                                   /pm:handoff                    │
+   /pm:amend  ──→  /pm:replan                                                                               /pm:release  →  /pm:version v2
 ```
 
-`/pm:architect` consolidates the research into concrete architecture and tech-stack decisions (the file `architecture.md` is then read by `/pm:plan`, `/pm:execute`, and `/pm:verify` as the source of truth). `/pm:claim` is optional for solo work and recommended for multi-developer teams — it makes your "I'm working on this" visible to teammates via git so two people don't double-implement the same task. `/pm:complete` opens the PR after `/pm:verify` accepts, and `/pm:resume` brings you back to a task's branch when you need to (e.g. PR feedback). `/pm:handoff` captures mid-task context when you need to stop before a task is done, so the next session (yourself later, or a teammate) can pick up without re-deriving where you left off. You can skip stages (`/pm:plan` will warn if there's no research or architecture but proceed) — the structure is opinionated, not rigid.
+`/pm:architect` consolidates the research into concrete architecture and tech-stack decisions (the file `architecture.md` is then read by `/pm:plan`, `/pm:execute`, and `/pm:verify` as the source of truth). `/pm:test` (optional) captures a per-version test strategy in `testing.md`; when present it shapes `/pm:plan`'s acceptance criteria and is binding on `/pm:execute` and `/pm:verify` — when absent, nothing changes. `/pm:claim` is optional for solo work and recommended for multi-developer teams — it makes your "I'm working on this" visible to teammates via git so two people don't double-implement the same task. `/pm:complete` opens the PR after `/pm:verify` accepts, and `/pm:resume` brings you back to a task's branch when you need to (e.g. PR feedback). `/pm:handoff` captures mid-task context when you need to stop before a task is done, so the next session (yourself later, or a teammate) can pick up without re-deriving where you left off. You can skip stages (`/pm:plan` will warn if there's no research or architecture but proceed) — the structure is opinionated, not rigid.
 
 `/pm:express` is the sanctioned fast path for **small projects** — a single-purpose feature, a focused fix, a one-shot prototype. One command runs a compressed PRD interview (PM persona only), picks one research persona if useful, lets you defer architecture if it's not strictly necessary, and generates 1–5 tasks. The artifacts it writes are the same shape the full pipeline produces, so `/pm:claim`, `/pm:execute`, `/pm:verify`, `/pm:complete`, and `/pm:handoff` work against express output unchanged. If scope grows later, graduate by running `/pm:research`, `/pm:architect`, and `/pm:replan` in place.
 
@@ -93,11 +95,11 @@ Fast-path planning for small projects, all in one command. Compressed PM intervi
 
 Use it when the work is a single-purpose feature or a focused fix that you'd realistically expect to ship in 1–5 task-sized chunks. Express writes the same files the full pipeline does — `prd.md`, `v1/goals.md`, optionally `v1/research/<persona>.md`, and task files — so `/pm:claim`, `/pm:execute`, `/pm:verify`, `/pm:complete`, `/pm:handoff`, and `/pm:resume` all work against express output unchanged. The PRD frontmatter carries an `express: true` marker so the project's origin is visible.
 
-Tasks generated by express have `arch_refs: []` (express doesn't write `architecture.md`), so the verifier's architecture-drift check is bypassed cleanly — no stub or placeholder architecture is ever written.
+Tasks generated by express have `arch_refs: []` and `test_refs: []` (express doesn't write `architecture.md` or `testing.md`), so the verifier's architecture- and test-strategy-drift checks are bypassed cleanly — no stub or placeholder files are ever written.
 
 **Safety gates:** If the scope-cap question reveals the work isn't small, express asks whether to continue or graduate to `/pm:prd`. If the task draft would exceed 5, it surfaces a graduation option to `/pm:plan`. On greenfield projects with non-trivial stack signals (multi-tenancy, distributed, real-time, full SaaS), it stops and recommends running `/pm:architect` first.
 
-**Graduation:** If express turns out to be insufficient (scope grew, architecture decisions surfaced, more research is needed), run the corresponding full-pipeline commands in place: `/pm:research <slug>` adds more personas additively, `/pm:architect <slug>` runs the architecture interview from scratch, and `/pm:replan <slug>` regenerates pending tasks against the new artifacts while preserving anything already done or in flight.
+**Graduation:** If express turns out to be insufficient (scope grew, architecture decisions surfaced, more research is needed), run the corresponding full-pipeline commands in place: `/pm:research <slug>` adds more personas additively, `/pm:architect <slug>` runs the architecture interview from scratch, `/pm:test <slug>` captures a binding test strategy, and `/pm:replan <slug>` regenerates pending tasks against the new artifacts while preserving anything already done or in flight.
 
 #### `/pm:amend <slug>`
 Append a dated, append-only amendment to the PRD. Use after research surfaces something that changes scope, or when stakeholders shift requirements mid-flight.
@@ -130,7 +132,7 @@ Re-runs a single persona — useful when a PRD amendment invalidates one report,
 
 ---
 
-### Architecture & tech stack
+### Architecture, tech stack & test strategy
 
 #### `/pm:architect [slug]`
 A two-persona interview — **Principal Architect** + a dynamically-picked **`<Stack> SME`** (e.g. "Java/Spring SME", "TypeScript/Node SME") — that consolidates the PRD and research into concrete architecture decisions and tech-stack picks. Output is `.pm/<slug>/<active_version>/architecture.md` and it becomes the source of truth that `/pm:plan`, `/pm:execute`, and `/pm:verify` read.
@@ -145,12 +147,23 @@ For every multiple-choice question you get a recommendation tied to the PRD and 
 
 `/pm:execute` reads `architecture.md` before writing any code and refuses to silently substitute (e.g. picking Mongo when the file says Postgres). `/pm:verify` rejects implementations that drift from documented decisions, citing the specific violated section.
 
+#### `/pm:test [slug]`
+An **optional** two-persona interview — **QA Lead** + a dynamically-picked **`<Stack> Test SME`** — that decides the test strategy for the version: test levels and pyramid, the must-cover map (tied to PRD/goals sections), frameworks and tooling (defaulting from `architecture.md`'s Testing pick and the repo's detected test setup), fixtures and test data, CI gating and flake policy, and what's deliberately out of scope. Output is `.pm/<slug>/<active_version>/testing.md`.
+
+```
+/pm:test recurring-s3-exports
+```
+
+Like `/pm:architect`, every multiple-choice question leads with a recommendation tied to the PRD and research (the `test-strategist` research report, if present, seeds the defaults), **"Other" is always available**, brownfield repos pre-fill the existing test harness, and re-running offers an **amend** path that appends to `## Amendments`.
+
+The strategy is **presence-gated binding**: skip the command and nothing changes anywhere. Run it, and `/pm:plan` shapes acceptance criteria around it (tasks get `test_refs`), `/pm:execute` writes tests at the documented levels with the documented tooling, and `/pm:verify` rejects test drift — unless the executor documents a justified deviation in the Implementation summary, which passes with a note.
+
 ---
 
 ### Planning
 
 #### `/pm:plan [slug]`
-Turns PRD + research + architecture into ordered task files. Each task is atomic, executable in one `/pm:execute` session, and includes acceptance criteria the verifier can check. Dependencies are declared explicitly so `/pm:execute` can auto-pick the next ready task. Tasks that hinge on a specific architecture decision get `arch_refs` so the executor stays anchored.
+Turns PRD + research + architecture into ordered task files. Each task is atomic, executable in one `/pm:execute` session, and includes acceptance criteria the verifier can check. Dependencies are declared explicitly so `/pm:execute` can auto-pick the next ready task. Tasks that hinge on a specific architecture decision get `arch_refs` so the executor stays anchored. Tasks whose tests are governed by `testing.md` get `test_refs`; without a `testing.md` every task carries `test_refs: []` and tests follow repo conventions.
 
 ```
 /pm:plan recurring-s3-exports
@@ -388,6 +401,12 @@ The orchestrator picks `security-architect`, `data-modeler`, `integration-engine
 ```
 Principal Architect + Java/Spring SME (the repo is brownfield Spring Boot) walk you through deployment topology, scaling, sync vs async (Stripe webhooks → SQS for retries), multi-tenancy (row-level by org_id), data layer (Postgres + Redis cache), and the full tech stack. You accept most recommendations and override `Cache` to use the existing Hazelcast cluster instead of Redis. `architecture.md` lands at `.pm/usage-billing/v1/architecture.md`.
 
+**2.6. (Optional) Test strategy.**
+```
+/pm:test usage-billing
+```
+QA Lead + Java/Spring Test SME walk you through levels (unit-heavy, integration via Testcontainers for Stripe webhooks, no e2e this version), the must-cover map (webhook idempotency, proration math, dunning state machine — each tied to PRD sections), fixtures (factory methods over static JSON), and CI gating (`mvn verify` gates merges). `testing.md` lands at `.pm/usage-billing/v1/testing.md` and now binds execution and verification.
+
 **3. Plan.**
 ```
 /pm:plan usage-billing
@@ -446,8 +465,9 @@ Mini-interview captures v2 scope (metered billing, annual contracts). The active
 - **A task is too small** if it's a one-line change with no testable surface. Fold it into a sibling.
 - **Don't skip `/pm:verify`.** The verifier runs in an independent context — that's the whole point. Letting the executor self-certify defeats the design.
 - **Use `/pm:amend` not edits.** If you discover the PRD was wrong, amending preserves the audit trail. Direct edits to `prd.md` work too but lose the "why" of the change.
-- **Architecture decisions are per-version and inherit by default.** `/pm:version vN` copies the prior version's `architecture.md` and records an inheritance Amendment. Re-run `/pm:architect <slug>` in amend mode to capture vN-specific changes, rather than rewriting from scratch.
+- **Architecture decisions are per-version and inherit by default.** `/pm:version vN` copies the prior version's `architecture.md` (and `testing.md`, if present) and records an inheritance Amendment. Re-run `/pm:architect <slug>` (or `/pm:test <slug>`) in amend mode to capture vN-specific changes, rather than rewriting from scratch.
 - **The architecture file is binding.** `/pm:execute` reads it before coding and refuses to silently substitute; `/pm:verify` rejects drift. If you genuinely need a different decision mid-execution, `/pm:architect <slug>` in amend mode first, then continue.
+- **The test strategy is optional but binding when present.** No `testing.md`, no friction — tests follow repo conventions. With one, `/pm:verify` rejects test drift unless the Implementation summary justifies the deviation. `/pm:version` inherits it like `architecture.md`.
 - **Versions are for shipped milestones, not branches.** If you're exploring a risky direction, a git branch is the right tool. A new `vN` folder is appropriate when you've shipped vN-1 and are planning the next deliverable cut.
 - **Brownfield projects** auto-include the `existing-codebase-archaeologist` persona during research, which surfaces the patterns and integration points the new work must respect.
 - **Jira sync is best-effort** — pm task state is the source of truth on disk. If a transition silently fails (acli down, permission gap, workflow change), use `/pm:jira-sync` to reconcile. Never reach for git revert because Jira didn't update.
@@ -462,7 +482,7 @@ Each command ships with a model pre-selected for its workload, so you're not pay
 
 | Tier | Commands | Why |
 |---|---|---|
-| **Opus** (judgment / synthesis) | `/pm:prd`, `/pm:express`, `/pm:amend`, `/pm:research`, `/pm:rerun-research`, `/pm:architect`, `/pm:plan`, `/pm:replan`, `/pm:verify`, `/pm:handoff`, `/pm:version` | Multi-source synthesis, two-persona interviews, architecture and task decomposition with dependencies, independent acceptance-criteria judgment, distilling session context into a useful handoff. Express runs PRD interview, persona selection, and task decomposition in one pass — compression is high-judgment work. |
+| **Opus** (judgment / synthesis) | `/pm:prd`, `/pm:express`, `/pm:amend`, `/pm:research`, `/pm:rerun-research`, `/pm:architect`, `/pm:test`, `/pm:plan`, `/pm:replan`, `/pm:verify`, `/pm:handoff`, `/pm:version` | Multi-source synthesis, two-persona interviews, architecture and task decomposition with dependencies, independent acceptance-criteria judgment, distilling session context into a useful handoff. Express runs PRD interview, persona selection, and task decomposition in one pass — compression is high-judgment work. |
 | **Sonnet** (code / git / mechanical) | `/pm:execute`, `/pm:complete`, `/pm:claim`, `/pm:resume`, `/pm:release`, `/pm:jira-init`, `/pm:jira-link`, `/pm:jira-create`, `/pm:jira-sync` | Code generation, git workflow, frontmatter edits, acli/gh shell-outs. Sonnet 4.6 handles these at a fraction of Opus cost. |
 | **Haiku** (read-only display) | `/pm:status`, `/pm:list`, `/pm:next` | Read frontmatter, format output, conditional sections. No judgment required. |
 
@@ -525,6 +545,7 @@ Same as initial planning — one person scaffolds vN with team input.
 | `/pm:prd`             | Lead, once                               |
 | `/pm:research`        | Lead, with team input on persona picks   |
 | `/pm:architect`       | Lead, with team review of tech-stack picks |
+| `/pm:test`            | Lead, with team review of the strategy   |
 | `/pm:plan`            | Lead, with team review of the task table |
 | `/pm:claim`           | Any engineer, before executing           |
 | `/pm:execute`         | Any engineer, after `/pm:claim`          |

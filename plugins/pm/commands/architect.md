@@ -90,7 +90,7 @@ Skip themes that don't apply (e.g. skip frontend for a CLI; skip database for a 
 | Auth provider / IAM | SME | Tied to identity architecture decision |
 | Hosting / infrastructure | Architect | Cloud, k8s, serverless, on-prem, hybrid |
 | CI/CD platform | Architect | GitHub Actions, GitLab CI, CircleCI, etc. |
-| Testing stack | SME | Unit / integration / e2e tooling per stack |
+| Testing stack | SME | Unit / integration / e2e tooling per stack — high-level pick only; the optional `/pm:test` elaborates the full strategy in `testing.md` |
 | Build / package management | SME | Per language idiom |
 | Logging / metrics / traces tools | Architect | Tied to observability architecture decision |
 
@@ -219,7 +219,7 @@ Print:
 - Path written.
 - Counts: tech-stack picks made; cross-cutting concerns captured.
 - Any open questions that came up — flag these to the user as "answer these before /pm:plan, or they'll block tasks."
-- Next-step hint: `/pm:plan <slug>` (or `/pm:replan <slug>` if tasks already exist and architecture changed).
+- Next-step hint: `/pm:test <slug>` (optional — detailed test strategy) then `/pm:plan <slug>` (or `/pm:replan <slug>` if tasks already exist and architecture changed).
 
 ## Output discipline
 

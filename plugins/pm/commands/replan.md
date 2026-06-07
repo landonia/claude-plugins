@@ -29,6 +29,7 @@ Read the full current state:
 - `prd.md` (including Amendments)
 - `<active_version>/goals.md`
 - `<active_version>/architecture.md` (if present — including Amendments; replanning must respect documented architecture decisions)
+- `<active_version>/testing.md` (if present — including Amendments; regenerated tasks must respect the documented test strategy and carry `test_refs`)
 - All files in `<active_version>/research/`
 - The bodies of the preserved tasks (so the new plan knows what's already done and doesn't redo it)
 

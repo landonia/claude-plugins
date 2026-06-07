@@ -229,6 +229,7 @@ Created via `/pm:express` — fast-path planning for small projects.
 If scope grew beyond what express handles:
 - `/pm:research <slug>` — add more research personas (additive — keeps the existing file)
 - `/pm:architect <slug>` — capture architecture decisions
+- `/pm:test <slug>` — capture a binding test strategy (optional)
 - `/pm:replan <slug>` — regenerate pending tasks against the new artifacts
 ```
 
@@ -242,6 +243,7 @@ Decompose the work into **1–5 tasks**, biased toward fewer/larger. Rules:
 - Order by execution sequence; use `depends_on` for any prerequisite chain.
 - 3-digit zero-padded IDs (`001`, `002`, …).
 - `arch_refs: []` (express doesn't produce binding architecture).
+- `test_refs: []` (express doesn't produce a binding test strategy; tests follow repo conventions).
 - `research_refs`: point at the one persona file from Step 3 with specific section refs, or `[]` if research was skipped.
 - Acceptance criteria must be **observable** — something the verifier can check.
 - **Note parallelizable structure when obvious.** If a task has multiple independent sub-units (similar adapters, unrelated call sites, independent boilerplate), call it out in `## Implementation notes` so the executor knows it's a candidate for parallel Agent subagent dispatch. Advisory — the executor makes the final call.
@@ -288,7 +290,7 @@ If `.pm/<slug>/.jira.yml` exists (Jira is enabled for this project), also print:
 ## Output discipline
 
 - **Don't invent details the user didn't confirm.** Thin sections in the PRD get `_Not material at this scope._` placeholders, not made-up content.
-- **Don't write a stub `architecture.md`.** Architecture is either real (via `/pm:architect`) or absent with `arch_refs: []`. No middle ground.
+- **Don't write a stub `architecture.md`.** Architecture is either real (via `/pm:architect`) or absent with `arch_refs: []`. No middle ground. The same applies to `testing.md` — express never writes one; tasks carry `test_refs: []`.
 - **Respect the scope cap.** If the interview reveals the work isn't small, or task draft exceeds 5, offer graduation rather than silently exceeding.
 - **One persona for research, max.** Multi-persona dispatch is what `/pm:research` is for. Express picks one or zero.
 - **Don't auto-run `/pm:claim` or `/pm:execute`.** Planning and executing are separate steps so the user can pause between them.

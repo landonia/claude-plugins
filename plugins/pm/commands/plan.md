@@ -22,6 +22,7 @@ Required artifacts:
 - `.pm/<slug>/<active_version>/goals.md` — REQUIRED.
 - `.pm/<slug>/<active_version>/research/` — RECOMMENDED. If empty or missing, warn: "No research found. Recommend running /pm:research <slug> first. Proceed anyway? (y/N)".
 - `.pm/<slug>/<active_version>/architecture.md` — RECOMMENDED. If missing, warn: "No architecture decisions found. Recommend running /pm:architect <slug> first (decides stack and topology). Proceed anyway? (y/N)".
+- `.pm/<slug>/<active_version>/testing.md` — OPTIONAL. If missing, print one informational line and continue without asking: "No test strategy found (optional). Run /pm:test <slug> to define one — otherwise tasks get test_refs: [] and tests follow repo conventions." Do NOT gate on it.
 
 If `.pm/<slug>/<active_version>/tasks/` already has files, STOP and tell the user to use `/pm:replan <slug>` instead (which preserves done tasks).
 
@@ -31,6 +32,7 @@ Read:
 - `prd.md` (including any Amendments)
 - `<active_version>/goals.md`
 - `<active_version>/architecture.md` (if present — including its Amendments)
+- `<active_version>/testing.md` (if present — including its Amendments)
 - Every file in `<active_version>/research/` (if present)
 
 ## Step 4 — Draft the task list
@@ -42,6 +44,7 @@ Decompose the work into atomic, executable tasks. Rules:
 - Slugify the title for the filename: `001-set-up-postgres-schema.md`.
 - Reference PRD/goals/research sections in `prd_refs` so the executor and verifier know what to read.
 - Cite `architecture.md` sections in `arch_refs` when a task's implementation is driven by a specific architecture decision (queue tech, multi-tenancy model, API style, stack pick, etc.) — keeps the executor anchored to what's been decided.
+- Cite `testing.md` sections in `test_refs` when a task's tests are governed by a specific strategy decision (must-cover map, tooling pick, fixture approach, CI gate); `[]` when there's no testing.md or no section applies. When testing.md is present, **shape acceptance criteria with it**: criteria for code tasks should name the test level and, where §5 specifies one, the suite/command that proves them (e.g. "covered by an integration test using Testcontainers per testing.md §3; `mvn verify` green"). Do NOT generate dedicated test-infrastructure tasks from testing.md — testing work lives inside the feature tasks it verifies.
 - Acceptance criteria must be **observable** — something the verifier can check, not a vague aspiration.
 - **Note parallelizable structure when obvious.** If a task has multiple independent sub-units (similar adapters across different APIs, several unrelated call sites, independent boilerplate files, etc.), call it out in `## Implementation notes` so the executor knows it's a candidate for parallel Agent subagent dispatch. This is advisory — the executor sees the actual code and makes the final call. Don't reach for it on tasks with sequential reasoning (schema → migration → code) or shared-file refactors.
 
@@ -77,6 +80,8 @@ prd_refs:                # list of section references
 arch_refs:               # architecture.md sections that bind this task's design; [] if none
   - "architecture.md §3 Sync vs async work"
   - "architecture.md §12 Tech stack"
+test_refs:               # testing.md sections that govern this task's tests; [] if none
+  - "testing.md §2 Coverage expectations"
 research_refs:           # research files that informed this task; [] if none
   - "research/security-architect.md §Findings 2"
 acceptance_criteria:

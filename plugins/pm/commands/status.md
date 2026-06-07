@@ -27,6 +27,7 @@ Read:
 - For the **active version**, also collect each task's `assignee`, `branch`, `claimed_at`, `jira_key`, and `pr_url` fields where present.
 - For the **active version's** `goals.md`, also read `jira_epic` if present.
 - For the **active version**, check `architecture.md`: if present, read its frontmatter `status` field (drafted/locked/superseded) and `inherited_from` if set.
+- For the **active version**, check `testing.md` the same way: frontmatter `status` and `inherited_from` if present.
 - Detect Jira enablement: `.pm/<slug>/.jira.yml` exists. If yes, read `site` from it (for building Jira URLs in output).
 
 Compute "next ready task" for the active version: lowest-id task with status `pending` or `rejected` whose deps are all `done`.
@@ -48,6 +49,7 @@ Versions:
 
 Active version detail (v2):
   Architecture: drafted (inherited from v1) — see .pm/<slug>/v2/architecture.md
+  Testing:   drafted — see .pm/<slug>/v2/testing.md
   Research:  6 personas — see .pm/<slug>/v2/research/_index.md
   Tasks:     pending: 4   in-progress: 1   done-pending-verify: 0   done: 2   rejected: 1
   Blockers:  task 005 (rejected) — see Verifier notes
@@ -65,6 +67,7 @@ Suggested next command: /pm:claim <slug>   (then /pm:execute)
 Conditional sections:
 - If no tasks have assignees set, omit the "In-progress / claimed tasks" section entirely. If the user is solo (only one assignee value appears across all tasks, matching git config user), still show the section — it's useful for the user to see their own claims.
 - The `Architecture:` line in "Active version detail" appears ONLY if `architecture.md` exists in the active version folder. Format: `<status>[ (inherited from <prior>)] — see .pm/<slug>/<version>/architecture.md`. If the file is missing, omit the line entirely.
+- The `Testing:` line follows the same rule for `testing.md` — present only if the file exists; omit otherwise. Do not suggest `/pm:test` in the next-step hints (it's optional).
 - The `Jira:` line in "Active version detail" appears ONLY if `.pm/<slug>/.jira.yml` exists. The epic portion appears only if `jira_epic` is set in the active version's goals.md.
 - The `Jira` column in the in-progress table appears ONLY when Jira is enabled. Tasks without a `jira_key` show `—` in the column.
 - When Jira is enabled, render the jira_key as a clickable URL in the output if the terminal/renderer supports it: `https://<site>/browse/<KEY>`.

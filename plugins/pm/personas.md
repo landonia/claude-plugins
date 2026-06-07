@@ -61,7 +61,7 @@ Subject-matter expert for the PRD's domain (fintech, healthcare, logistics, devt
 Reads the current repo, surfaces existing patterns, modules, conventions, and integration points the new work must respect. ALWAYS picked when the repo is non-empty (brownfield).
 
 ### test-strategist
-Test pyramid for the work, what should be unit vs integration vs e2e, fixtures/factories needed, flake risks, CI cost. Picks up on most non-trivial work.
+Test pyramid for the work, what should be unit vs integration vs e2e, fixtures/factories needed, flake risks, CI cost. Picks up on most non-trivial work. When `/pm:test` runs, this report is its primary research seed — findings here become the default recommendations in the test-strategy interview.
 
 ### migration-strategist
 Picks up when the work modifies existing data, schemas, public APIs, or running production behavior. Plans backfills, zero-downtime steps, rollback paths.

@@ -79,7 +79,7 @@ jira_epic: ""                 # set in Step 6.5 if Jira is enabled
 <One paragraph: what shipped, key lessons, what changed.>
 ```
 
-## Step 4.5 — Carry forward architecture (if any)
+## Step 4.5 — Carry forward architecture and test strategy (if any)
 
 After scaffolding the folder, check whether the prior version has an `architecture.md`:
 - `<prior-version>/architecture.md` exists → copy it to `<new-version>/architecture.md` and:
@@ -92,7 +92,19 @@ After scaffolding the folder, check whether the prior version has an `architectu
     ```
   - Tell the user: `Architecture inherited from <prior-version> → <new-version>/architecture.md.`
   - Ask: "Run `/pm:architect <slug>` now to amend for <new-version>, or skip and decide later?" — if yes, hand off; if no, the existing file stays as-is until the user runs it explicitly.
-- `<prior-version>/architecture.md` missing → no copy; tell the user `No prior architecture to inherit. Consider running /pm:architect <slug> before /pm:plan.`
+- `<prior-version>/architecture.md` missing → no copy; tell the user `No prior architecture to inherit. Consider running /pm:architect <slug> (and optionally /pm:test <slug>) before /pm:plan.`
+
+Then check whether the prior version has a `testing.md`:
+- `<prior-version>/testing.md` exists → copy it to `<new-version>/testing.md` and:
+  - Update the copied file's frontmatter: `version: <new-version>`, `inherited_from: <prior-version>`, `status: drafted`.
+  - Append a fresh Amendments entry recording the carry-forward:
+    ```markdown
+    ### <YYYY-MM-DD> — Inherited from <prior-version>
+    **Why:** Starting <new-version> from the prior version's test strategy as the baseline.
+    **Change:** Copied verbatim. Edit this file or run `/pm:test <slug>` (amend mode) to capture <new-version>-specific changes.
+    ```
+  - Tell the user: `Test strategy inherited from <prior-version> → <new-version>/testing.md.`
+- `<prior-version>/testing.md` missing → no copy, no nag (testing.md is optional).
 
 ## Step 5 — Update PRD frontmatter
 

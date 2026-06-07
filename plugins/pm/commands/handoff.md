@@ -8,7 +8,7 @@ argument-hint: [slug] [task-id]
 
 You are running the `/pm:handoff` command. The user is **stopping mid-task** and needs to leave behind enough context for the next executor to pick up.
 
-The next executor will see the PRD, research, architecture, and the task file — those are stable inputs already on disk. Your job here is to capture the **ephemeral, in-flight context that isn't anywhere else**: the approach taken so far, what's working, what's half-done, what the next concrete steps are, and any gotchas surfaced during implementation that no planning document anticipated.
+The next executor will see the PRD, research, architecture, test strategy, and the task file — those are stable inputs already on disk. Your job here is to capture the **ephemeral, in-flight context that isn't anywhere else**: the approach taken so far, what's working, what's half-done, what the next concrete steps are, and any gotchas surfaced during implementation that no planning document anticipated.
 
 A handoff is **context-passing, not ownership transfer.** The task stays `in-progress`, the assignee and branch are unchanged. A teammate who wants to take over runs `/pm:claim <slug> <NNN> --force` after picking up the handoff.
 
@@ -63,12 +63,12 @@ You have the session context fresh — the approach you took, files you touched,
 - Committed on branch: <what's done and stable>
 - Uncommitted in working tree: <what's half-done; describe the in-progress diff at a level the next person can act on>
 **Next steps:** <concrete, ordered list of what the next executor should do — first thing first>
-**Gotchas / things not in PRD/research/architecture:** <subtleties surfaced during implementation that the planning docs don't cover>
+**Gotchas / things not in PRD/research/architecture/test strategy:** <subtleties surfaced during implementation that the planning docs don't cover>
 **Open questions:** <decisions that need to be made before continuing — leave empty if none>
 ```
 
 **Authoring discipline — critical:**
-- **Don't repeat planning content.** The task already references `prd_refs`, `arch_refs`, `research_refs`. Don't restate the goal, the acceptance criteria, or the architectural decisions — the next executor will read those directly. Capture only what's *not* in any of those documents.
+- **Don't repeat planning content.** The task already references `prd_refs`, `arch_refs`, `test_refs`, `research_refs`. Don't restate the goal, the acceptance criteria, or the architectural decisions — the next executor will read those directly. Capture only what's *not* in any of those documents.
 - **Be specific.** "Refactored the service layer" is useless. "Pulled out `BillingCalculator` to its own class at `src/billing/BillingCalculator.java`, but the `applyDiscounts` method still depends on the old `PricingContext` constructor that needs the discount-tier change from task 004" is useful.
 - **Lead with state, not narrative.** The next executor doesn't need your debugging journey; they need to know what they'll find when they `git diff` and `git status`.
 - **Next steps are an ordered checklist, not a wish list.** Each item should be actionable on its own.

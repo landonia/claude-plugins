@@ -26,14 +26,15 @@ If the user names a task whose status is NOT `done-pending-verify`, warn them �
 Read fresh — don't rely on memory from a prior /pm:execute session:
 1. `.pm/<slug>/prd.md` including Amendments.
 2. `.pm/<slug>/<active_version>/goals.md`.
-3. The task file: frontmatter, Task, Implementation notes, Out of scope, Implementation summary, Re-execution notes (if any).
-4. Every file in `research_refs`, plus key sections of any other research files that touch the task's domain.
-5. The actual diff/changes — use `git status`, `git diff`, and `git diff --staged` to see what changed.
-6. The files listed in the Implementation summary's "Files changed" section.
+3. `.pm/<slug>/<active_version>/testing.md` if present, including Amendments — the test strategy is binding when it exists.
+4. The task file: frontmatter, Task, Implementation notes, Out of scope, Implementation summary, Re-execution notes (if any).
+5. Every file in `research_refs`, plus key sections of any other research files that touch the task's domain, and the testing sections in the task's `test_refs` (treat a missing `test_refs` field on older tasks as `[]`).
+6. The actual diff/changes — use `git status`, `git diff`, and `git diff --staged` to see what changed.
+7. The files listed in the Implementation summary's "Files changed" section.
 
 ## Step 3 — Run tests if applicable
 
-If the Implementation summary specifies a test command, run it. If it doesn't but the project has an obvious test setup and the task touches testable code, run the suite anyway. Capture pass/fail.
+If the Implementation summary specifies a test command, run it. If it doesn't but the project has an obvious test setup and the task touches testable code, run the suite anyway. Capture pass/fail. If `testing.md` exists, its §5 CI gating names the canonical merge-gating command(s) — run those for the touched area in preference to guessing.
 
 ## Step 4 — Verify each acceptance criterion
 
@@ -51,6 +52,7 @@ Beyond the literal criteria, check:
 - **Scope compliance:** Did the implementation stay within the task's `## Out of scope`? Surface any drift.
 - **PRD alignment:** Does the work match `prd_refs` sections? Note divergences.
 - **Architecture compliance:** Does the implementation follow `architecture.md` decisions — the documented stack picks, sync/async split, multi-tenancy model, API style, queue/database tech, auth model — or did it silently substitute something else? Drift from architecture is a **REJECT** unless the executor surfaced the conflict and got the architecture amended first. Cite the violated section(s) (`architecture.md §N`) in your notes.
+- **Test strategy compliance:** If `testing.md` exists: are the new/changed tests at the levels it documents, using its tooling and fixture approach, and do they satisfy its must-cover map and coverage threshold for the touched paths? (For test-tooling detail, testing.md §3 supersedes architecture.md §12's one-line Testing pick.) Divergence is a **REJECT** unless the Implementation summary's `Test strategy deviations` block justifies it — a justified, documented deviation passes (note it in your verdict). Cite the violated section(s) (`testing.md §N`). If `testing.md` is absent, skip this check entirely — the generic **Tests** bullet below is the only bar.
 - **Research compliance:** Did the implementation follow the research recommendations (or have a documented reason not to)? Note gotchas from research that may have been missed.
 - **Stack conventions:** Does the code follow the project's CLAUDE.md, applicable skills (e.g. java-guidelines), and patterns visible elsewhere in the repo?
 - **Tests:** If criteria implied tests, are they real, asserting the right thing, and passing?

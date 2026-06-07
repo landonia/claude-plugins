@@ -50,7 +50,7 @@ Before writing, show the user the exact text being appended. Apply any requested
 
 ## Step 5 — Hand off
 
-After writing, look at the amendment text and check whether it touches **architecture concerns** — telltale words like "switch from X to Y" (database, queue, framework, hosting), "add a queue", "multi-region", "stateless", "async", "GraphQL", "REST", "tenancy", "auth provider", "horizontal scaling", "microservice", "monolith". If it does, also suggest `/pm:architect <slug>` (amend mode) so the architecture decisions get updated in sync — not just the PRD prose.
+After writing, look at the amendment text and check whether it touches **architecture concerns** — telltale words like "switch from X to Y" (database, queue, framework, hosting), "add a queue", "multi-region", "stateless", "async", "GraphQL", "REST", "tenancy", "auth provider", "horizontal scaling", "microservice", "monolith". If it does, also suggest `/pm:architect <slug>` (amend mode) so the architecture decisions get updated in sync — not just the PRD prose. Likewise, if the amendment touches **testing concerns** — telltales like "coverage", "e2e", "test framework", "flaky", "CI gate", "must be tested" — and `testing.md` exists for the active version, also suggest `/pm:test <slug>` (amend mode).
 
 Then suggest the appropriate next step based on the user's answer to "does this affect pending tasks?":
 - **Yes + architecture-touching:** suggest `/pm:architect <slug>` first, then `/pm:replan <slug>` once architecture decisions are updated.
