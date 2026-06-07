@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/landonia/claude-plugins/compare/pm-v1.3.0...pm-v1.4.0) (2026-06-07)
+
+
+### Features
+
+* **pm:** add /pm:auto autonomous execute→verify loop ([9818ca5](https://github.com/landonia/claude-plugins/commit/9818ca5044e7b2badcfa0203ae00d13a8d1e8e6d))
+
 ## [1.3.0](https://github.com/landonia/claude-plugins/compare/pm-v1.2.0...pm-v1.3.0) (2026-06-07)
 
 
