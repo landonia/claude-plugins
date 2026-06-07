@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/landonia/claude-plugins/compare/pm-v1.2.0...pm-v1.3.0) (2026-06-07)
+
+
+### Features
+
+* **pm:** add /pm:test test-strategy command and testing.md artifact ([96f7237](https://github.com/landonia/claude-plugins/commit/96f7237af6592b195f243bc0bbfb775ec4c2edd8))
+* **pm:** parallel subagent dispatch in /pm:execute ([96c15e6](https://github.com/landonia/claude-plugins/commit/96c15e65281eb57a33202d1c25eec2d0438a41bd))
+
 ## [1.2.0](https://github.com/landonia/claude-plugins/compare/pm-v1.1.0...pm-v1.2.0) (2026-06-05)
 
 
