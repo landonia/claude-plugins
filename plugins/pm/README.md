@@ -49,7 +49,7 @@ Every project lives under `.pm/<project-slug>/` in your repo. The folder is comm
     └── tasks/
 ```
 
-Each task file is markdown with YAML frontmatter capturing `status`, `depends_on`, `prd_refs`, and `acceptance_criteria`. Status flows: `pending → in-progress → done-pending-verify → done` (or `→ rejected → pending` on a verify rejection).
+Each task file is markdown with YAML frontmatter capturing `status`, `depends_on`, `complexity` (a Fibonacci effort/risk score — `1,2,3,5,8,13`), `prd_refs`, and `acceptance_criteria`. Status flows: `pending → in-progress → done-pending-verify → done` (or `→ rejected → pending` on a verify rejection). The `complexity` score drives version weight in `/pm:status` and the `/pm:gantt` chart.
 
 ### The flow
 
@@ -391,6 +391,14 @@ Peek at the next ready task without executing. Shows the task's acceptance crite
 /pm:next recurring-s3-exports
 ```
 
+#### `/pm:gantt [slug] [version]`
+Render a mermaid `gantt` chart of a version's tasks, using each task's `complexity` score as a relative duration and `depends_on` for ordering. Paste the emitted block into GitHub, a PR, or any markdown preview. Defaults to the active version.
+
+```
+/pm:gantt recurring-s3-exports
+/pm:gantt recurring-s3-exports v2
+```
+
 ---
 
 ## A complete worked example
@@ -498,7 +506,7 @@ Each command ships with a model pre-selected for its workload, so you're not pay
 |---|---|---|
 | **Opus** (judgment / synthesis) | `/pm:prd`, `/pm:express`, `/pm:amend`, `/pm:research`, `/pm:rerun-research`, `/pm:architect`, `/pm:test`, `/pm:plan`, `/pm:replan`, `/pm:verify`, `/pm:handoff`, `/pm:version` | Multi-source synthesis, two-persona interviews, architecture and task decomposition with dependencies, independent acceptance-criteria judgment, distilling session context into a useful handoff. Express runs PRD interview, persona selection, and task decomposition in one pass — compression is high-judgment work. |
 | **Sonnet** (code / git / mechanical) | `/pm:execute`, `/pm:auto`, `/pm:complete`, `/pm:claim`, `/pm:resume`, `/pm:release`, `/pm:jira-init`, `/pm:jira-link`, `/pm:jira-create`, `/pm:jira-sync` | Code generation, git workflow, frontmatter edits, acli/gh shell-outs. Sonnet 4.6 handles these at a fraction of Opus cost. |
-| **Haiku** (read-only display) | `/pm:status`, `/pm:list`, `/pm:next` | Read frontmatter, format output, conditional sections. No judgment required. |
+| **Haiku** (read-only display) | `/pm:status`, `/pm:list`, `/pm:next`, `/pm:gantt` | Read frontmatter, format output, conditional sections. No judgment required. |
 
 **`/pm:research` also dispatches its persona subagents on Sonnet** (the orchestrator stays on Opus). Each persona writes a focused ~800-word report — well within Sonnet's strength — and dispatching 3–6 in parallel makes the cost difference matter.
 
@@ -574,7 +582,7 @@ Same as initial planning — one person scaffolds vN with team input.
 | `/pm:replan`          | Lead, after amendment is merged          |
 | `/pm:release`         | Lead, once per version                   |
 | `/pm:version`         | Lead, once                               |
-| `/pm:status`, `/pm:list`, `/pm:next` | Anyone, anytime           |
+| `/pm:status`, `/pm:list`, `/pm:next`, `/pm:gantt` | Anyone, anytime      |
 
 ### Known gaps to be aware of
 

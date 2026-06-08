@@ -24,6 +24,7 @@ Read:
   - Whether `RELEASE.md` exists.
   - Count of research files in `research/` (excluding `_index.md` and `.archive/`).
   - Task counts in `tasks/` by status: pending / in-progress / done-pending-verify / done / rejected.
+  - Sum the `complexity` points across tasks: total points, done points (status `done`), and remaining (total − done). Treat a task with an absent or empty `complexity` as **unscored** — count it toward the task count but not the point totals, and track how many are unscored.
 - For the **active version**, also collect each task's `assignee`, `branch`, `claimed_at`, `jira_key`, and `pr_url` fields where present.
 - For the **active version's** `goals.md`, also read `jira_epic` if present.
 - For the **active version**, check `architecture.md`: if present, read its frontmatter `status` field (drafted/locked/superseded) and `inherited_from` if set.
@@ -44,7 +45,7 @@ Status: <status>   Active version: <active_version>   Created: <date>   Amendmen
 
 Versions:
   v1  shipped  (released <date>)   — 12 tasks, 4 research reports
-  v2  active                       — 3/8 tasks done, 1 rejected, 1 in-progress
+  v2  active                       — 3/8 tasks done (21/55 pts), 1 rejected, 1 in-progress
   v3  planning                     — 0 tasks
 
 Active version detail (v2):
@@ -52,6 +53,7 @@ Active version detail (v2):
   Testing:   drafted — see .pm/<slug>/v2/testing.md
   Research:  6 personas — see .pm/<slug>/v2/research/_index.md
   Tasks:     pending: 4   in-progress: 1   done-pending-verify: 0   done: 2   rejected: 1
+  Complexity: 55 pts total · 21 done · 34 remaining   (avg 6.9/task)
   Blockers:  task 005 (rejected) — see Verifier notes
              task 007 (pending) blocked by 005
   Jira:      enabled — site company.atlassian.net   epic PROJ-100 (In Progress)
@@ -68,6 +70,7 @@ Conditional sections:
 - If no tasks have assignees set, omit the "In-progress / claimed tasks" section entirely. If the user is solo (only one assignee value appears across all tasks, matching git config user), still show the section — it's useful for the user to see their own claims.
 - The `Architecture:` line in "Active version detail" appears ONLY if `architecture.md` exists in the active version folder. Format: `<status>[ (inherited from <prior>)] — see .pm/<slug>/<version>/architecture.md`. If the file is missing, omit the line entirely.
 - The `Testing:` line follows the same rule for `testing.md` — present only if the file exists; omit otherwise. Do not suggest `/pm:test` in the next-step hints (it's optional).
+- The `Complexity:` line shows total / done / remaining points and average per scored task. If some tasks are unscored, append `(N unscored)`. If NO task in the active version has a `complexity` value, omit the line and drop the `(P/T pts)` figure from the per-version summary — don't show zeroed totals for a project that predates scoring.
 - The `Jira:` line in "Active version detail" appears ONLY if `.pm/<slug>/.jira.yml` exists. The epic portion appears only if `jira_epic` is set in the active version's goals.md.
 - The `Jira` column in the in-progress table appears ONLY when Jira is enabled. Tasks without a `jira_key` show `—` in the column.
 - When Jira is enabled, render the jira_key as a clickable URL in the output if the terminal/renderer supports it: `https://<site>/browse/<KEY>`.
