@@ -246,6 +246,7 @@ Decompose the work into **1–5 tasks**, biased toward fewer/larger. Rules:
 - `test_refs: []` (express doesn't produce a binding test strategy; tests follow repo conventions).
 - `research_refs`: point at the one persona file from Step 3 with specific section refs, or `[]` if research was skipped.
 - Acceptance criteria must be **observable** — something the verifier can check.
+- **Score each task's `complexity`** on the Fibonacci scale `1 | 2 | 3 | 5 | 8 | 13`, using the same rubric as `/pm:plan` (effort + uncertainty/risk; `13` = too big, split it). Drives `/pm:status` weight and `/pm:gantt`.
 - **Note parallelizable structure when obvious.** If a task has multiple independent sub-units (similar adapters, unrelated call sites, independent boilerplate), call it out in `## Implementation notes` so the executor knows it's a candidate for parallel Agent subagent dispatch. Advisory — the executor makes the final call.
 
 **Soft cap of 5 tasks.** If your draft needs more than 5, surface it:
@@ -256,10 +257,10 @@ Don't silently exceed the cap. If the user picks graduation, write the PRD/goals
 
 Present the drafted task list as a table before writing files:
 
-| ID  | Title                       | Depends on | Refs                       |
-|-----|-----------------------------|------------|----------------------------|
-| 001 | <task title>                | —          | goals.md §What ships, §3.1 |
-| 002 | <task title>                | 001        | prd.md §3.2                |
+| ID  | Title                       | Pts | Depends on | Refs                       |
+|-----|-----------------------------|-----|------------|----------------------------|
+| 001 | <task title>                | 3   | —          | goals.md §What ships, §3.1 |
+| 002 | <task title>                | 5   | 001        | prd.md §3.2                |
 
 Let the user edit (add/remove/rename/reorder) before writing. Use AskUserQuestion to confirm.
 

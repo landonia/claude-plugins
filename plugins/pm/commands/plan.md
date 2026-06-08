@@ -46,15 +46,16 @@ Decompose the work into atomic, executable tasks. Rules:
 - Cite `architecture.md` sections in `arch_refs` when a task's implementation is driven by a specific architecture decision (queue tech, multi-tenancy model, API style, stack pick, etc.) — keeps the executor anchored to what's been decided.
 - Cite `testing.md` sections in `test_refs` when a task's tests are governed by a specific strategy decision (must-cover map, tooling pick, fixture approach, CI gate); `[]` when there's no testing.md or no section applies. When testing.md is present, **shape acceptance criteria with it**: criteria for code tasks should name the test level and, where §5 specifies one, the suite/command that proves them (e.g. "covered by an integration test using Testcontainers per testing.md §3; `mvn verify` green"). Do NOT generate dedicated test-infrastructure tasks from testing.md — testing work lives inside the feature tasks it verifies.
 - Acceptance criteria must be **observable** — something the verifier can check, not a vague aspiration.
+- **Score each task's `complexity`** on the Fibonacci scale `1 | 2 | 3 | 5 | 8 | 13`, reflecting effort **and** uncertainty/risk (not just line count): `1` trivial / config-only · `2` small, single concern · `3` standard feature slice · `5` multi-file or non-trivial logic · `8` large, several moving parts · `13` very complex. A `13` is a hint that the task is too big — prefer splitting it into two smaller tasks. This score drives `/pm:status` version weight and the `/pm:gantt` chart.
 - **Note parallelizable structure when obvious.** If a task has multiple independent sub-units (similar adapters across different APIs, several unrelated call sites, independent boilerplate files, etc.), call it out in `## Implementation notes` so the executor knows it's a candidate for parallel Agent subagent dispatch. This is advisory — the executor sees the actual code and makes the final call. Don't reach for it on tasks with sequential reasoning (schema → migration → code) or shared-file refactors.
 
 Present the drafted list as a table to the user before writing files:
 
-| ID  | Title                       | Depends on | Refs                       |
-|-----|-----------------------------|------------|----------------------------|
-| 001 | Set up Postgres schema      | —          | goals.md §What ships, §3.1 |
-| 002 | Auth endpoints              | 001        | prd.md §3.2                |
-| ... |                             |            |                            |
+| ID  | Title                       | Pts | Depends on | Refs                       |
+|-----|-----------------------------|-----|------------|----------------------------|
+| 001 | Set up Postgres schema      | 3   | —          | goals.md §What ships, §3.1 |
+| 002 | Auth endpoints              | 5   | 001        | prd.md §3.2                |
+| ... |                             |     |            |                            |
 
 Let the user edit (add/remove/reorder/rename) before writing. Use AskUserQuestion to confirm.
 
@@ -74,6 +75,7 @@ pr_url: ""               # set by /pm:complete — GitHub PR URL
 completed_at: ""         # set by /pm:complete — YYYY-MM-DD
 jira_key: ""             # set by /pm:jira-link or /pm:jira-create — e.g. "PROJ-123"
 depends_on: []           # list of task ids as strings, e.g. ["001", "002"]
+complexity: <N>          # Fibonacci points: 1 | 2 | 3 | 5 | 8 | 13 — relative effort/risk; drives /pm:status weight and /pm:gantt
 prd_refs:                # list of section references
   - "prd.md §3.1"
   - "goals.md §What ships"
@@ -113,6 +115,6 @@ Print:
 
 ## Output discipline
 - Don't generate more than ~25 tasks in one pass — if the work is bigger, group into phases and tell the user some tasks are "phase 2" placeholders that need their own decomposition later.
-- A task is too big if its acceptance criteria can't be checked in one focused review. Split it.
+- A task is too big if its acceptance criteria can't be checked in one focused review. Split it. A task scored `complexity: 13` is usually too big — prefer splitting it into two 5s/8s.
 - A task is too small if it's a one-line change with no testable surface — fold it into a sibling.
 - Tasks should NOT cross version boundaries. If a thought belongs to v2, it goes in v2's plan, not v1's.

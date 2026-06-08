@@ -61,7 +61,9 @@ For each task being replaced:
 
 ## Step 6 — Write new tasks
 
-Use the same file format as `/pm:plan` Step 5. Make sure `depends_on` references account for the new ID layout. If a new task depends on a preserved task that's already `done`, that's fine — `depends_on` just needs the ID; status filtering happens at execute time.
+Use the same file format as `/pm:plan` Step 5 — including a Fibonacci `complexity` score per new task. Make sure `depends_on` references account for the new ID layout. If a new task depends on a preserved task that's already `done`, that's fine — `depends_on` just needs the ID; status filtering happens at execute time.
+
+**Backfill `complexity` on preserved tasks that lack it.** Tasks created before complexity scoring existed won't have the field; for each preserved task missing a `complexity` value, add one using the `/pm:plan` rubric so the replanned version is fully scored for `/pm:status` and `/pm:gantt`. This is the only field you may add to a preserved task — don't touch its other frontmatter or body.
 
 ## Step 7 — Hand off
 
