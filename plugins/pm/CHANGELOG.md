@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/landonia/claude-plugins/compare/pm-v1.5.0...pm-v1.5.1) (2026-06-08)
+
+
+### Bug Fixes
+
+* **pm:** make /pm:auto loop deterministic to stop premature stalls ([62fc8d9](https://github.com/landonia/claude-plugins/commit/62fc8d9bde3a00b977047c3467face27153feb91))
+
 ## [1.5.0](https://github.com/landonia/claude-plugins/compare/pm-v1.4.0...pm-v1.5.0) (2026-06-08)
 
 
