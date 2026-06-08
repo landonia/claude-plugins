@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/landonia/claude-plugins/compare/pm-v1.4.0...pm-v1.5.0) (2026-06-08)
+
+
+### Features
+
+* **pm:** add task complexity score and /pm:gantt chart ([#6](https://github.com/landonia/claude-plugins/issues/6)) ([e16e92a](https://github.com/landonia/claude-plugins/commit/e16e92a60b786f6ed51945c10edda7903307dcf1))
+
 ## [1.4.0](https://github.com/landonia/claude-plugins/compare/pm-v1.3.0...pm-v1.4.0) (2026-06-07)
 
 
