@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.0](https://github.com/landonia/claude-plugins/compare/pm-v1.5.2...pm-v1.6.0) (2026-06-09)
+
+
+### Features
+
+* **pm:** log resolved max-retries at /pm:auto startup ([31d7c64](https://github.com/landonia/claude-plugins/commit/31d7c648f063b907d7fe103bb0270817fb0df104))
+
+
+### Bug Fixes
+
+* **pm:** harden slug recovery in /pm:auto workflow ([695d894](https://github.com/landonia/claude-plugins/commit/695d894517c870d49e7edc90e16b125d722899ee))
+
 ## [1.5.2](https://github.com/landonia/claude-plugins/compare/pm-v1.5.1...pm-v1.5.2) (2026-06-09)
 
 
