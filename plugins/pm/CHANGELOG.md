@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/landonia/claude-plugins/compare/pm-v1.6.0...pm-v1.6.1) (2026-06-09)
+
+
+### Bug Fixes
+
+* **pm:** parse args when /pm:auto orchestrator passes it as a JSON string ([6591ead](https://github.com/landonia/claude-plugins/commit/6591ead1b33aeeb897231fea6d4135d0b91ab5b4))
+
 ## [1.6.0](https://github.com/landonia/claude-plugins/compare/pm-v1.5.2...pm-v1.6.0) (2026-06-09)
 
 
