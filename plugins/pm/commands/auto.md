@@ -67,7 +67,7 @@ args = {
 
 `maxRetries` is NOT in this object — the script parses it from `rawArgs` in code (Step 3 script), so the `--max-retries` flag takes effect deterministically rather than depending on the orchestrator extracting the number. `slug` is also recovered from `tasksDir` in the script if you omit it, so the dispatched worker prompts can't say `'undefined'` — but still populate it here.
 
-**3.2 — Dispatch the loop.** Call the **Workflow tool** with the `args` above and the `script` below verbatim. The Workflow runs in the background; per-cycle progress is visible live via `/workflows`, and you are re-invoked when it finishes. When it returns its result object, print the Step 6 summary from it.
+**3.2 — Dispatch the loop.** Call the **Workflow tool** with the `args` above and the `script` below verbatim. **Pass `args` as an actual JSON object value, NOT a JSON-encoded string** — if you stringify it, every `args.X` read inside the script is `undefined` and workers get dispatched with project `'unknown'` and path `'undefined'`. (The script also defensively `JSON.parse`s a stringified `args` as a backstop, but pass an object regardless.) The Workflow runs in the background; per-cycle progress is visible live via `/workflows`, and you are re-invoked when it finishes. When it returns its result object, print the Step 6 summary from it.
 
 **3.3 — Fallback.** If the Workflow tool is not available in this environment, do NOT improvise — follow the **Fallback loop** section at the end of this file instead.
 
@@ -79,6 +79,13 @@ export const meta = {
   description: 'Autonomous execute -> verify loop for a pm project until done or blocked',
   phases: [{ title: 'Loop' }],
 }
+
+// --- Normalize args: some orchestrators serialize the args object to a JSON
+//     string before passing it to the Workflow tool. When that happens, every
+//     args.X read is undefined (string has no such property) and workers get
+//     dispatched with project 'unknown' / path 'undefined'. Parse it back so
+//     the loop is robust to that, regardless of how the model fills the input.
+if (typeof args === 'string') { try { args = JSON.parse(args) } catch (e) { /* leave as-is; guard below reports */ } }
 
 // --- Schemas (the script has no filesystem access; every disk read is an agent) ---
 const SNAPSHOT = {
@@ -133,6 +140,16 @@ const _ra = String(args.rawArgs || '').replace(/--max-retries[=\s]+\d+/, ' ')
 const _slugTok = _ra.trim().split(/\s+/).find(t => t && !t.startsWith('--'))
 const slug = args.slug || (_td && _td[1]) || _slugTok || 'unknown'
 log(`project = ${slug} (slug arg=${args.slug || '∅'}, tasksDir=${args.tasksDir || '∅'})`)
+
+// --- Guard: if the inputs never arrived (e.g. args passed as an unparseable
+//     string, or the orchestrator skipped Step 3.1), fail loud instead of
+//     dispatching 'unknown'/'undefined' workers that quietly do the wrong thing.
+const _missing = ['tasksDir', 'executeCmdPath', 'verifyCmdPath'].filter(k => !args[k])
+if (slug === 'unknown' || _missing.length) {
+  const detail = `slug='${slug}', missing=[${_missing.join(', ') || 'none'}], argsType=${typeof args}`
+  log(`ABORT: /pm:auto inputs not populated — ${detail}. The orchestrator must pass args as a JSON object (Step 3.1/3.2), not a string.`)
+  return { reason: 'bad-inputs', detail, completed: [], rejectionCapped: null, blocked: null, skippedClaimed: [], cycles: 0 }
+}
 
 // --- Worker prompts (mirror Step 4; only slug + id cross the boundary) ---
 function executePrompt(id, resumeLine) {
