@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.2](https://github.com/landonia/claude-plugins/compare/pm-v1.5.1...pm-v1.5.2) (2026-06-09)
+
+
+### Bug Fixes
+
+* **pm:** parse --max-retries deterministically in /pm:auto workflow ([e3a2c18](https://github.com/landonia/claude-plugins/commit/e3a2c18b1c41fd8bf25e1f30d7c5ed57fb4ac006))
+* **pm:** recover slug from tasksDir in /pm:auto workflow prompts ([1174963](https://github.com/landonia/claude-plugins/commit/1174963c2a09094b3c67f96360884af8ac68852c))
+
 ## [1.5.1](https://github.com/landonia/claude-plugins/compare/pm-v1.5.0...pm-v1.5.1) (2026-06-08)
 
 
