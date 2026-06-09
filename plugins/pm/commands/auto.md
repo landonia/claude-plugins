@@ -65,7 +65,7 @@ args = {
 }
 ```
 
-`maxRetries` is NOT in this object — the script parses it from `rawArgs` in code (Step 3 script), so the `--max-retries` flag takes effect deterministically rather than depending on the orchestrator extracting the number.
+`maxRetries` is NOT in this object — the script parses it from `rawArgs` in code (Step 3 script), so the `--max-retries` flag takes effect deterministically rather than depending on the orchestrator extracting the number. `slug` is also recovered from `tasksDir` in the script if you omit it, so the dispatched worker prompts can't say `'undefined'` — but still populate it here.
 
 **3.2 — Dispatch the loop.** Call the **Workflow tool** with the `args` above and the `script` below verbatim. The Workflow runs in the background; per-cycle progress is visible live via `/workflows`, and you are re-invoked when it finishes. When it returns its result object, print the Step 6 summary from it.
 
@@ -124,12 +124,18 @@ const VERDICT = {
   },
 }
 
+// --- Resolve slug deterministically: prefer the orchestrator's value, else
+//     recover it from tasksDir (.pm/<slug>/<version>/tasks) so worker prompts
+//     never say 'undefined' when the model omits args.slug.
+const _td = String(args.tasksDir || '').match(/\.pm\/([^/]+)\/[^/]+\/tasks\/?$/)
+const slug = args.slug || (_td && _td[1]) || 'unknown'
+
 // --- Worker prompts (mirror Step 4; only slug + id cross the boundary) ---
 function executePrompt(id, resumeLine) {
   return [
-    `You are an execute worker dispatched by /pm:auto for project '${args.slug}'.`,
+    `You are an execute worker dispatched by /pm:auto for project '${slug}'.`,
     ``,
-    `Invoke the Skill tool with skill 'pm:execute' and args '${args.slug} ${id}', and follow that command fully. If the Skill tool is unavailable or 'pm:execute' is not in your available skills, instead Read the file '${args.executeCmdPath}' and follow its contents as your instructions, treating $ARGUMENTS as '${args.slug} ${id}'.`,
+    `Invoke the Skill tool with skill 'pm:execute' and args '${slug} ${id}', and follow that command fully. If the Skill tool is unavailable or 'pm:execute' is not in your available skills, instead Read the file '${args.executeCmdPath}' and follow its contents as your instructions, treating $ARGUMENTS as '${slug} ${id}'.`,
     ``,
     `Rules: work ONLY task ${id} — never auto-pick another. Never pass --force. Never commit or push. Do not run pm:verify or any other pm command. You cannot ask the user questions: where pm:execute would ask one, take the safe default — and if you cannot complete the task, follow its blocker protocol exactly (leave status 'in-progress', write a '## Blocker' section with specifics) rather than improvising, lowering the bar, or flipping the status anyway.${resumeLine}`,
     ``,
@@ -138,9 +144,9 @@ function executePrompt(id, resumeLine) {
 }
 function verifyPrompt(id) {
   return [
-    `You are an independent verifier dispatched by /pm:auto for project '${args.slug}'.`,
+    `You are an independent verifier dispatched by /pm:auto for project '${slug}'.`,
     ``,
-    `Invoke the Skill tool with skill 'pm:verify' and args '${args.slug} ${id}', and follow that command fully. If the Skill tool is unavailable or 'pm:verify' is not in your available skills, instead Read the file '${args.verifyCmdPath}' and follow its contents as your instructions, treating $ARGUMENTS as '${args.slug} ${id}'.`,
+    `Invoke the Skill tool with skill 'pm:verify' and args '${slug} ${id}', and follow that command fully. If the Skill tool is unavailable or 'pm:verify' is not in your available skills, instead Read the file '${args.verifyCmdPath}' and follow its contents as your instructions, treating $ARGUMENTS as '${slug} ${id}'.`,
     ``,
     `Rules: verify ONLY task ${id}. You did not write this code; judge it cold. Never modify implementation files — only the task file, per pm:verify. Never commit or push. If borderline, REJECT with specific notes.`,
     ``,
@@ -149,7 +155,7 @@ function verifyPrompt(id) {
 }
 
 const snapshotPrompt =
-  `You are a read-only status reader for /pm:auto, project '${args.slug}'.\n` +
+  `You are a read-only status reader for /pm:auto, project '${slug}'.\n` +
   `Read EVERY '*.md' task file in this directory:\n  ${args.tasksDir}\n` +
   `For each task return one object with:\n` +
   `- id: the 3-digit task id (frontmatter 'id', else the leading number of the filename, zero-padded to 3)\n` +
