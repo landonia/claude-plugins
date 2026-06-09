@@ -1,5 +1,5 @@
 {
   "plugins/interaction-logger": "1.1.0",
   "plugins/java-guidelines": "1.0.0",
-  "plugins/pm": "1.5.2"
+  "plugins/pm": "1.6.0"
 }
