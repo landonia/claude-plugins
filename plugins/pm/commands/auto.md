@@ -171,6 +171,7 @@ const snapshotPrompt =
 const _mr = String(args.rawArgs || '').match(/--max-retries[=\s]+(\d+)/)
 const maxRetries = _mr ? parseInt(_mr[1], 10)
   : (Number.isInteger(args.maxRetries) ? args.maxRetries : 2)
+log(`max-retries = ${maxRetries}${_mr ? ' (from --max-retries)' : ' (default)'}`)
 const me = String(args.gitEmail || '').toLowerCase()
 const rejections = {}                 // id -> rejections this session
 const completed = []
