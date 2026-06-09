@@ -20,6 +20,8 @@ Parse `$ARGUMENTS`:
 - 1 arg slug → that project.
 - `--max-retries N` (anywhere) → maximum rejections of the same task within this session. Default: 2. Note the arithmetic: default 2 means up to 3 executions of a task (initial attempt + re-attempts after rejections 1 and 2; the 2nd rejection ends the session). `--max-retries 0` = stop on the first rejection.
 
+You do NOT extract `N` yourself for the Workflow — pass `$ARGUMENTS` verbatim as `rawArgs` (Step 3.1) and the deterministic script parses the flag in code, so its effect never depends on model parsing. You still read the slug from `$ARGUMENTS` for project resolution.
+
 No task-id argument. To drive a specific task, run `/pm:execute <slug> <NNN>` and `/pm:verify <slug> <NNN>` supervised, then `/pm:auto <slug>` for the rest.
 
 ## Step 1 — Resolve project and version
@@ -56,12 +58,14 @@ args = {
   tasksDir:         "<abs path to .pm/<slug>/<active_version>/tasks>",
   executeCmdPath:   "${CLAUDE_PLUGIN_ROOT}/commands/execute.md",
   verifyCmdPath:    "${CLAUDE_PLUGIN_ROOT}/commands/verify.md",
-  maxRetries:       <N from --max-retries, default 2>,
+  rawArgs:          "<the verbatim $ARGUMENTS string, e.g. 'myproj --max-retries 5'>",
   gitEmail:         "<git config user.email>",
   resumeAuthorized: [<task ids approved for resume in Step 2>],
   skippedClaimed:   [<{id, owner} recorded in Step 2>],
 }
 ```
+
+`maxRetries` is NOT in this object — the script parses it from `rawArgs` in code (Step 3 script), so the `--max-retries` flag takes effect deterministically rather than depending on the orchestrator extracting the number.
 
 **3.2 — Dispatch the loop.** Call the **Workflow tool** with the `args` above and the `script` below verbatim. The Workflow runs in the background; per-cycle progress is visible live via `/workflows`, and you are re-invoked when it finishes. When it returns its result object, print the Step 6 summary from it.
 
@@ -158,7 +162,9 @@ const snapshotPrompt =
   `READ ONLY — do not modify any file. Return every task.`
 
 // --- Loop state (held in code, the source of all flow decisions) ---
-const maxRetries = Number.isInteger(args.maxRetries) ? args.maxRetries : 2
+const _mr = String(args.rawArgs || '').match(/--max-retries[=\s]+(\d+)/)
+const maxRetries = _mr ? parseInt(_mr[1], 10)
+  : (Number.isInteger(args.maxRetries) ? args.maxRetries : 2)
 const me = String(args.gitEmail || '').toLowerCase()
 const rejections = {}                 // id -> rejections this session
 const completed = []
