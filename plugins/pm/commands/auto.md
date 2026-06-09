@@ -125,10 +125,14 @@ const VERDICT = {
 }
 
 // --- Resolve slug deterministically: prefer the orchestrator's value, else
-//     recover it from tasksDir (.pm/<slug>/<version>/tasks) so worker prompts
-//     never say 'undefined' when the model omits args.slug.
-const _td = String(args.tasksDir || '').match(/\.pm\/([^/]+)\/[^/]+\/tasks\/?$/)
-const slug = args.slug || (_td && _td[1]) || 'unknown'
+//     recover it from rawArgs (first non-flag token the user typed) or from
+//     tasksDir (first path segment after '.pm/', any depth) so worker prompts
+//     never say 'unknown' when the model omits args.slug.
+const _td = String(args.tasksDir || '').match(/\.pm\/([^/]+)(?:\/|$)/)
+const _ra = String(args.rawArgs || '').replace(/--max-retries[=\s]+\d+/, ' ')
+const _slugTok = _ra.trim().split(/\s+/).find(t => t && !t.startsWith('--'))
+const slug = args.slug || (_td && _td[1]) || _slugTok || 'unknown'
+log(`project = ${slug} (slug arg=${args.slug || '∅'}, tasksDir=${args.tasksDir || '∅'})`)
 
 // --- Worker prompts (mirror Step 4; only slug + id cross the boundary) ---
 function executePrompt(id, resumeLine) {
