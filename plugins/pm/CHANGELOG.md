@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.2](https://github.com/landonia/claude-plugins/compare/pm-v1.6.1...pm-v1.6.2) (2026-06-10)
+
+
+### Bug Fixes
+
+* **pm:** make /pm:auto snapshot deterministic and fix in-progress resume ([e6f0bcb](https://github.com/landonia/claude-plugins/commit/e6f0bcbfdcd543eecf77a1a4d9e3f3a5dcb22715))
+
 ## [1.6.1](https://github.com/landonia/claude-plugins/compare/pm-v1.6.0...pm-v1.6.1) (2026-06-09)
 
 
