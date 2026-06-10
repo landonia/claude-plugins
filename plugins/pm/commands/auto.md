@@ -176,16 +176,22 @@ function verifyPrompt(id) {
 }
 
 const snapshotPrompt =
-  `You are a read-only status reader for /pm:auto, project '${slug}'.\n` +
-  `Read EVERY '*.md' task file in this directory:\n  ${args.tasksDir}\n` +
-  `For each task return one object with:\n` +
-  `- id: the 3-digit task id (frontmatter 'id', else the leading number of the filename, zero-padded to 3)\n` +
-  `- title: frontmatter 'title' (or the first heading)\n` +
-  `- status: frontmatter 'status' verbatim\n` +
-  `- depends_on: frontmatter 'depends_on' as an array of 3-digit id strings (empty array if none)\n` +
-  `- assignee: frontmatter 'assignee' verbatim, or null if absent/empty\n` +
-  `- hasBlocker / blockerText: whether the body has a '## Blocker' section, and its full text (else false / null)\n` +
-  `- hasVerifierNotes / verifierNotesText: whether the body has a '## Verifier notes' section, and the text of the MOST RECENT one (else false / null)\n` +
+  `You are a read-only status reader for /pm:auto, project '${slug}'. Be fast and frugal: do NOT read full task files — grep.\n` +
+  `Task files are the '*.md' files in: ${args.tasksDir}\n` +
+  `1. List the '*.md' task files there.\n` +
+  `2. FRONTMATTER ONLY — read each file's top YAML block (between the first pair of '---' lines), ideally with one grep across all files, to get:\n` +
+  `   - id: frontmatter 'id', else the leading number of the filename, zero-padded to 3\n` +
+  `   - title: frontmatter 'title' (or the first heading)\n` +
+  `   - status: frontmatter 'status' verbatim\n` +
+  `   - depends_on: frontmatter 'depends_on' as an array of 3-digit id strings (empty array if none)\n` +
+  `   - assignee: frontmatter 'assignee' verbatim, or null if absent/empty\n` +
+  `3. SECTION PRESENCE by LITERAL heading grep — never by meaning:\n` +
+  `   - hasBlocker: true ONLY if the body contains a line matching '^## Blocker' exactly. A '## Verifier notes — … — REJECTED' section is NOT a blocker — never set hasBlocker for it.\n` +
+  `   - hasVerifierNotes: true if the body contains a line matching '^## Verifier notes'.\n` +
+  `4. BODY TEXT only where the loop needs it — otherwise return null (do NOT read bodies for other tasks):\n` +
+  `   - blockerText: ONLY when status is 'in-progress' AND hasBlocker — the text under '## Blocker'. Else null.\n` +
+  `   - verifierNotesText: ONLY when status is 'rejected' — the text of the MOST RECENT '## Verifier notes' section. Else null.\n` +
+  `Return one object per task with: id, title, status, depends_on, assignee, hasBlocker, blockerText, hasVerifierNotes, verifierNotesText.\n` +
   `READ ONLY — do not modify any file. Return every task.`
 
 // --- Loop state (held in code, the source of all flow decisions) ---
@@ -205,13 +211,27 @@ const out = { reason: null, completed, rejectionCapped: null, blocked: null, ski
 
 const heldByOther = (a) => !!a && !String(a).toLowerCase().includes(me)
 const ready = (t, byId) =>
-  (t.status === 'pending' || t.status === 'rejected') &&
+  (t.status === 'pending' || t.status === 'rejected' ||
+   (t.status === 'in-progress' && resumeAuthorized.includes(t.id))) &&
   (t.depends_on || []).every(d => byId[d] && byId[d].status === 'done')
 
 while (true) {
   // (1) Disk is truth — a fresh, independent snapshot every iteration.
-  const snap = await agent(snapshotPrompt, { schema: SNAPSHOT, model: 'haiku', label: 'snapshot', phase: 'Loop' })
-  const tasks = (snap && snap.tasks) || []
+  let snap = await agent(snapshotPrompt, { schema: SNAPSHOT, model: 'sonnet', label: 'snapshot', phase: 'Loop' })
+  let tasks = (snap && snap.tasks) || []
+  if (tasks.length === 0) {
+    // A non-empty tasks dir returning 0 tasks is a snapshot read failure, not a
+    // finished project (pre-flight already exits early on a genuinely empty one).
+    // Retry once before aborting loud — never let a bad read masquerade as 'done'.
+    log(`[cycle ${cycle}] snapshot returned 0 tasks — retrying once`)
+    snap = await agent(snapshotPrompt, { schema: SNAPSHOT, model: 'sonnet', label: 'snapshot-retry', phase: 'Loop' })
+    tasks = (snap && snap.tasks) || []
+    if (tasks.length === 0) {
+      out.reason = 'snapshot empty'
+      log(`ABORT: snapshot returned 0 tasks twice for ${args.tasksDir} — likely a read failure, not a finished project.`)
+      break
+    }
+  }
   const byId = {}
   for (const t of tasks) byId[t.id] = t
 
@@ -331,6 +351,7 @@ The loop computes these in code (Step 3 script) from each fresh snapshot. It sto
 - **Blocker** — execute worker left `in-progress` + `## Blocker`. Print the blocker verbatim (`blocked.text`). Hint: resolve it, then re-run `/pm:auto <slug>` — pre-flight will offer to resume the task.
 - **No eligible tasks** — ready tasks exist but all are claimed by others, or pending tasks are blocked behind skipped/claimed ones. Report as "no eligible tasks", NOT "all done" — list who holds what (`skippedClaimed`).
 - **Cycle cap** — `max_cycles` reached. This almost certainly indicates a bug worth reporting.
+- **Snapshot empty** — the snapshot agent returned 0 tasks twice in a row for a non-empty tasks dir. A read failure, NOT a finished project; the loop aborts loud rather than masquerading as "no eligible tasks". (`reason: 'snapshot empty'`) Hint: re-run `/pm:auto <slug>`; if it persists, the snapshot read is broken.
 - **Anomaly** — a worker died mid-work, refused, or failed (disk status didn't advance as expected). Surface the worker's state.
 
 ## Step 6 — Final summary
@@ -338,7 +359,7 @@ The loop computes these in code (Step 3 script) from each fresh snapshot. It sto
 Always printed by you (the orchestrator) when the Workflow returns, whatever the stop reason:
 
 ```
-/pm:auto finished — <reason: all tasks done | retry cap hit on 004 | blocker on 006 | no eligible tasks | cycle cap hit | anomaly>
+/pm:auto finished — <reason: all tasks done | retry cap hit on 004 | blocker on 006 | no eligible tasks | cycle cap hit | snapshot empty | anomaly>
 Cycles run:        7
 Completed:         003, 004, 005
 Rejection-capped:  —  (or: 004 — 2 rejections, see ## Verifier notes)
@@ -356,7 +377,7 @@ Initialize session state: a rejection map (`task-id → rejections_this_session`
 
 Repeat until a Step 5 stop condition fires:
 
-**3a. Pick the phase.** Any `done-pending-verify` task → **verify phase** on the lowest id (drains pre-existing backlog first). Else the lowest-id **eligible** ready task → **execute phase**. Ready = status `pending`/`rejected` AND every `depends_on` id is `done`, MINUS tasks whose `assignee` is someone other than the current git identity (record those in `skipped_claimed`). NEVER pass `--force`. Else → stop (no eligible tasks).
+**3a. Pick the phase.** Any `done-pending-verify` task → **verify phase** on the lowest id (drains pre-existing backlog first). Else the lowest-id **eligible** ready task → **execute phase**. Ready = status `pending`/`rejected` (or `in-progress` when the id is in `resume_authorized`) AND every `depends_on` id is `done`, MINUS tasks whose `assignee` is someone other than the current git identity (record those in `skipped_claimed`). NEVER pass `--force`. Else → stop (no eligible tasks).
 
 **3b. Dispatch ONE Agent subagent** (the matching Step 4 prompt). Serial — one at a time; parallel dispatch here is a bug.
 
