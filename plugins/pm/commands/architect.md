@@ -1,7 +1,7 @@
 ---
 description: Interview the user (Principal Architect + dynamic stack SME) on architecture and tech-stack decisions. Produces the per-version architecture.md that drives planning and execution.
 model: opus
-argument-hint: <slug>
+argument-hint: <slug> [--auto]
 ---
 
 # /pm:architect — Architecture and tech-stack decisions
@@ -10,6 +10,7 @@ You are running the `/pm:architect` command. The user is consolidating the PRD a
 
 ## Inputs
 - Slug: `$ARGUMENTS` (use active-project resolution if empty).
+- `--auto` (anywhere in `$ARGUMENTS`) — **override mode.** Do not ask the user any questions. At every point where this command would normally interview, confirm, or present an `AskUserQuestion`, instead choose the best option from the PRD / research / architecture / repo signals and your own expertise, state the decision and a one-line rationale inline, and continue. Reserve stopping for hard blockers only (a missing REQUIRED input that cannot be inferred). When a gate would replace an existing artifact, take the **overwrite-with-backup** path automatically (back up / archive first — never lose data). Default (flag absent) = the interactive behavior described below.
 
 ## Step 1 — Resolve project and active version
 
@@ -19,12 +20,14 @@ Standard active-project resolution. Read `active_version` from `prd.md` frontmat
 
 - `.pm/<slug>/prd.md` — REQUIRED. If missing, stop and tell the user to run `/pm:prd` first.
 - `.pm/<slug>/<active_version>/goals.md` — REQUIRED.
-- `.pm/<slug>/<active_version>/research/` — RECOMMENDED. If empty or missing, warn: `"No research found. Recommend running /pm:research <slug> first. Proceed anyway? (y/N)"` and continue if the user confirms.
+- `.pm/<slug>/<active_version>/research/` — RECOMMENDED. If empty or missing, warn: `"No research found. Recommend running /pm:research <slug> first. Proceed anyway? (y/N)"` and continue if the user confirms. Under `--auto`, proceed without the prompt, noting the absence in one line.
 
 If `.pm/<slug>/<active_version>/architecture.md` already exists, ask via `AskUserQuestion`:
 - **Overwrite** — back up the existing file to `architecture.md.bak.<timestamp>` and start fresh.
 - **Amend** — read the current file and run a focused diff-style interview that only revisits sections the user wants to change. Each change appends to the `## Amendments` section.
 - **Cancel** — stop.
+
+Under `--auto`, take **Overwrite** automatically — back up the existing file to `architecture.md.bak.<timestamp>` first (overwrite-with-backup), then start fresh.
 
 ## Step 3 — Read context
 
@@ -47,7 +50,7 @@ You are simultaneously two interviewers throughout this session. Surface their n
 
 **Persona B — `<Stack> SME`.** Pick a stack framing for the SME based on:
 1. **Brownfield first:** if the repo has an existing stack, the SME is for that stack (e.g. "Java/Spring SME", "TypeScript/Node SME", "Python/Django SME", "Go SME", "Rust SME").
-2. **Greenfield:** propose a stack SME framing based on PRD signals (web app → "TypeScript/Node SME"; data pipeline → "Python SME"; high-perf systems → "Go SME" or "Rust SME"; mobile → platform-appropriate SME). State your pick in one sentence at the start and let the user override before continuing.
+2. **Greenfield:** propose a stack SME framing based on PRD signals (web app → "TypeScript/Node SME"; data pipeline → "Python SME"; high-perf systems → "Go SME" or "Rust SME"; mobile → platform-appropriate SME). State your pick in one sentence at the start and let the user override before continuing. Under `--auto`, state your pick and proceed without waiting for an override.
 
 Tag every question with `[Architect]` or `[SME-<stack>]` so the user knows who's asking.
 
@@ -56,6 +59,8 @@ Tag every question with `[Architect]` or `[SME-<stack>]` so the user knows who's
 Conduct the interview in themed rounds. Each round asks 2–4 questions. Use `AskUserQuestion` for discrete choices; free-form prose for open-ended exploration. **Every multiple-choice question lists your recommendation first with a one-line rationale; "Other" is always available for custom overrides.**
 
 Skip any theme that's clearly N/A for this project (e.g. skip multi-tenancy for a single-user CLI).
+
+Under `--auto`, do not ask any of the questions in Steps 5–7. For each applicable theme and tech-stack concern, make the decision yourself using the same "recommendation first" logic specified below, and record the choice with its one-line rationale in the drafted `architecture.md`. Skip N/A themes as usual.
 
 ### Themes to cover
 
@@ -106,7 +111,7 @@ Smaller, fast round. Only ask what's relevant:
 
 ## Step 8 — Draft and confirm
 
-Render the full `architecture.md` to the user using the schema below. Allow per-section edits via free-form revisions. Iterate until the user confirms.
+Render the full `architecture.md` to the user using the schema below. Allow per-section edits via free-form revisions. Iterate until the user confirms. Under `--auto`, skip the confirm-iterate loop and proceed straight to writing the file.
 
 ### `architecture.md` schema
 

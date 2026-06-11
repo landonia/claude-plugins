@@ -1,7 +1,7 @@
 ---
 description: Interview the user with a PM + dynamic domain SME pair to fill gaps, then draft a PRD and scaffold the project folder.
 model: opus
-argument-hint: <one-line idea>
+argument-hint: <one-line idea> [--auto]
 ---
 
 # /pm:prd — PRD interview and draft
@@ -10,18 +10,21 @@ You are running the `/pm:prd` command. The user wants to capture a product idea 
 
 ## Inputs
 - Idea seed: `$ARGUMENTS`
+- `--auto` (anywhere in `$ARGUMENTS`) — **override mode.** Do not ask the user any questions. At every point where this command would normally interview, confirm, or present an `AskUserQuestion`, instead choose the best option from the PRD / research / architecture / repo signals and your own expertise, state the decision and a one-line rationale inline, and continue. Reserve stopping for hard blockers only (a missing REQUIRED input that cannot be inferred). When a gate would replace an existing artifact, take the **overwrite-with-backup** path automatically (back up / archive first — never lose data). Default (flag absent) = the interactive behavior described below.
 - Current working directory is the project repo root.
 
 ## Step 1 — Validate inputs and derive a slug
 
-If `$ARGUMENTS` is empty or just whitespace, ask the user: "What's the idea? Give me a one-line seed and I'll take it from there." Then continue.
+If `$ARGUMENTS` is empty or just whitespace (ignoring the `--auto` flag), ask the user: "What's the idea? Give me a one-line seed and I'll take it from there." Then continue. Under `--auto` the idea seed is the one REQUIRED input that cannot be inferred — if it's empty, STOP with a clear "need a one-line idea seed to proceed" message rather than inventing one.
 
-Derive a kebab-case slug from the idea (3–5 words max). Examples: "build a tool that schedules recurring S3 exports" → `recurring-s3-exports`. Show the slug to the user and let them override before proceeding.
+Derive a kebab-case slug from the idea (3–5 words max). Examples: "build a tool that schedules recurring S3 exports" → `recurring-s3-exports`. Show the slug to the user and let them override before proceeding. Under `--auto`, use the derived slug as-is without asking.
 
 Check whether `.pm/<slug>/` already exists. If it does, STOP and ask whether the user wants to:
 - amend the existing PRD (suggest `/pm:amend <slug>` instead), or
 - pick a new slug, or
 - delete the existing folder (requires explicit confirmation).
+
+Under `--auto`, do not stop here: take the non-destructive best action automatically — derive a unique slug by appending a numeric suffix (e.g. `<slug>-2`) and proceed, noting the rename in one line. Never delete the existing folder in override mode.
 
 ## Step 2 — Adopt the personas
 
@@ -39,6 +42,8 @@ Conduct a focused interview. Rules:
 - Tag each question with `[PM]` or `[SME]` so the user knows who's asking.
 - Stop interviewing when you have enough to draft a PRD that a competent team could execute against. Typically 2–4 rounds. Don't pad.
 - If the user says "draft it" or "good enough", stop immediately and draft.
+
+Under `--auto`, skip the interview entirely. Draft the PRD directly from the idea seed plus reasonable, clearly-labeled assumptions, leaving `_TBD_` placeholders where a detail is genuinely unknowable (per Output discipline below).
 
 ## Step 4 — Draft the PRD
 
@@ -146,7 +151,7 @@ This folder holds the project's PRD, research, and tasks. Managed by the `pm` pl
 
 ## Step 5 — Confirm with the user
 
-Show the drafted `prd.md` and `goals.md` content to the user before writing. Make any requested edits, then write the files.
+Show the drafted `prd.md` and `goals.md` content to the user before writing. Make any requested edits, then write the files. Under `--auto`, skip the show-and-confirm and write the files directly.
 
 ## Step 6 — Hand off
 

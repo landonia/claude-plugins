@@ -1,7 +1,7 @@
 ---
 description: Generate ordered task files with frontmatter from the PRD and research, including dependencies and acceptance criteria.
 model: opus
-argument-hint: <slug>
+argument-hint: <slug> [--auto]
 ---
 
 # /pm:plan — Generate ordered tasks
@@ -10,6 +10,7 @@ You are running the `/pm:plan` command. Turn the PRD and research into an ordere
 
 ## Inputs
 - Slug: `$ARGUMENTS` (active-project resolution if empty).
+- `--auto` (anywhere in `$ARGUMENTS`) — **override mode.** Do not ask the user any questions. At every point where this command would normally interview, confirm, or present an `AskUserQuestion`, instead choose the best option from the PRD / research / architecture / repo signals and your own expertise, state the decision and a one-line rationale inline, and continue. Reserve stopping for hard blockers only (a missing REQUIRED input that cannot be inferred). When a gate would replace an existing artifact, take the **overwrite-with-backup** path automatically (back up / archive first — never lose data). One deliberate exception: the populated-`tasks/` STOP in Step 2 still halts even under `--auto` (it routes to `/pm:replan`, which preserves done tasks — it is a state guard, not a question). Default (flag absent) = the interactive behavior described below.
 
 ## Step 1 — Resolve project and active version
 
@@ -20,11 +21,11 @@ Same resolution rules as other commands. Read `active_version` from `prd.md` fro
 Required artifacts:
 - `.pm/<slug>/prd.md` — REQUIRED. If missing, stop and tell the user to run `/pm:prd`.
 - `.pm/<slug>/<active_version>/goals.md` — REQUIRED.
-- `.pm/<slug>/<active_version>/research/` — RECOMMENDED. If empty or missing, warn: "No research found. Recommend running /pm:research <slug> first. Proceed anyway? (y/N)".
-- `.pm/<slug>/<active_version>/architecture.md` — RECOMMENDED. If missing, warn: "No architecture decisions found. Recommend running /pm:architect <slug> first (decides stack and topology). Proceed anyway? (y/N)".
+- `.pm/<slug>/<active_version>/research/` — RECOMMENDED. If empty or missing, warn: "No research found. Recommend running /pm:research <slug> first. Proceed anyway? (y/N)". Under `--auto`, proceed without prompting (one-line note).
+- `.pm/<slug>/<active_version>/architecture.md` — RECOMMENDED. If missing, warn: "No architecture decisions found. Recommend running /pm:architect <slug> first (decides stack and topology). Proceed anyway? (y/N)". Under `--auto`, proceed without prompting (one-line note).
 - `.pm/<slug>/<active_version>/testing.md` — OPTIONAL. If missing, print one informational line and continue without asking: "No test strategy found (optional). Run /pm:test <slug> to define one — otherwise tasks get test_refs: [] and tests follow repo conventions." Do NOT gate on it.
 
-If `.pm/<slug>/<active_version>/tasks/` already has files, STOP and tell the user to use `/pm:replan <slug>` instead (which preserves done tasks).
+If `.pm/<slug>/<active_version>/tasks/` already has files, STOP and tell the user to use `/pm:replan <slug>` instead (which preserves done tasks). This STOP holds even under `--auto` — it is a state guard, not an interview question.
 
 ## Step 3 — Read everything
 
@@ -57,7 +58,7 @@ Present the drafted list as a table to the user before writing files:
 | 002 | Auth endpoints              | 5   | 001        | prd.md §3.2                |
 | ... |                             |     |            |                            |
 
-Let the user edit (add/remove/reorder/rename) before writing. Use AskUserQuestion to confirm.
+Let the user edit (add/remove/reorder/rename) before writing. Use AskUserQuestion to confirm. Under `--auto`, skip the confirmation and write the task files directly from the drafted list.
 
 ## Step 5 — Write task files
 
