@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.7.0](https://github.com/landonia/claude-plugins/compare/pm-v1.6.2...pm-v1.7.0) (2026-06-12)
+
+
+### Features
+
+* **pm:** add --auto flag and /pm:autoplan orchestrator ([b728e9a](https://github.com/landonia/claude-plugins/commit/b728e9a228209d060d78099d4c85a9c7dd18a1c6))
+* **pm:** add --auto override flag to authoring commands ([2680d03](https://github.com/landonia/claude-plugins/commit/2680d03c75d7c871e6dc2e399437ac86ed777c5b))
+* **pm:** add /pm:autoplan authoring-pipeline orchestrator ([f7cbfa2](https://github.com/landonia/claude-plugins/commit/f7cbfa26527d9e3ff142cdd350bf618da5433a7a))
+* **pm:** add opt-in --parallel flag to /pm:auto ([#15](https://github.com/landonia/claude-plugins/issues/15)) ([f8c8a1e](https://github.com/landonia/claude-plugins/commit/f8c8a1ebe2ed8d096851027e51eda33c4e747c8f))
+
 ## [1.6.2](https://github.com/landonia/claude-plugins/compare/pm-v1.6.1...pm-v1.6.2) (2026-06-10)
 
 
