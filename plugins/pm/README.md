@@ -240,17 +240,21 @@ A Senior QA / Tech Lead persona that **independently** verifies the work. Reads 
 On accept: status `done`, brief accepted note appended.
 On reject: status `rejected`, plus a `## Verifier notes` section listing **specific, actionable gaps** so the next `/pm:execute` (which may be a different session entirely) can pick up cold and finish the work correctly.
 
-#### `/pm:auto [slug] [--max-retries N]`
+#### `/pm:auto [slug] [--max-retries N] [--parallel [N]]`
 Autonomously loops the execute → verify pair until no ready tasks remain. Each phase — every execute, every verify, every retry — runs in its own **isolated subagent with a fresh context**: the orchestrator just picks the next task, dispatches a worker, re-reads the task's status from disk (it never trusts the subagent's report), and decides whether to continue. State lives entirely in the task files, never in conversation context, so the verifier-independence guarantee survives automation — a verify subagent never shares context with the executor that produced the work, and a retry after rejection learns what went wrong solely from the `## Verifier notes` on disk.
 
 ```
-/pm:auto usage-billing                   # run until no ready tasks remain
+/pm:auto usage-billing                   # run until no ready tasks remain (sequential — the default)
 /pm:auto usage-billing --max-retries 3   # allow 3 rejections of the same task before stopping
+/pm:auto usage-billing --parallel        # run independent tasks concurrently (default 3 at a time)
+/pm:auto usage-billing --parallel 5      # up to 5 task pipelines at once (capped by the dep graph's width)
 ```
 
 The loop: verify any `done-pending-verify` backlog first, then execute the lowest-id ready task → verify it. ACCEPT → next ready task. REJECT → re-execute the same task. It stops and hands back to you on: all tasks done (suggests `/pm:release`), the same task rejected `--max-retries` times (default 2 — prints the verifier notes verbatim), an executor blocker (prints the `## Blocker` verbatim), or no eligible tasks left (e.g. everything remaining is claimed by teammates). A final summary lists completed, rejection-capped, skipped-claimed, and blocked tasks.
 
-What auto does NOT do: it never runs `/pm:claim`, `/pm:complete`, or `/pm:release`, never passes `--force`, never commits or pushes, and skips tasks claimed by someone else rather than taking them over. In multi-dev settings, `/pm:claim` before `/pm:auto` is still the recommended courtesy.
+**Parallel mode (`--parallel [N]`, opt-in; sequential is the default).** Runs up to N independent task pipelines (those whose `depends_on` are all done) concurrently. To do this safely it gives each task its **own git worktree** and the execute worker **commits to a per-task branch** so the independent verifier can review it cold; on ACCEPT the work is **merged back into your current branch** (serialized) so dependents see it. Merge conflicts between concurrently-completed tasks are auto-resolved, then the merged result is re-verified; an unresolvable merge or a failed re-verify leaves that task's branch for you to integrate by hand. Because this **commits to your current branch**, run it on a feature branch, not `main` (it warns if you don't). A per-task failure doesn't halt the run — in-flight work drains and the summary reports every outcome (completed, blocked, rejection-capped, anomalies, merge-failed, unreachable). Parallel mode requires the Workflow tool; without it the flag degrades to the sequential loop.
+
+What auto does NOT do: it never runs `/pm:claim`, `/pm:complete`, or `/pm:release`, never passes `--force`, never pushes, and skips tasks claimed by someone else rather than taking them over. In **sequential** (default) mode it also never commits; **`--parallel` mode** is the one exception — it commits accepted work to per-task branches and to your current branch (but still never pushes or opens PRs). In multi-dev settings, `/pm:claim` before `/pm:auto` is still the recommended courtesy.
 
 #### `/pm:autoplan <one-line idea> | <slug> [--force]`
 The planning-phase sibling of `/pm:auto`: runs the full authoring pipeline — `prd → research → architect → test → plan` — autonomously, with **each stage in its own isolated subagent** invoking the real command with `--auto`. State lives on disk; the orchestrator only sequences stages and re-confirms each stage's artifact on disk before moving on (it never trusts the worker's report). When the last stage lands task files, it hands off to `/pm:auto <slug>`.
