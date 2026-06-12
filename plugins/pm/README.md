@@ -56,8 +56,8 @@ Each task file is markdown with YAML frontmatter capturing `status`, `depends_on
 ```
 /pm:prd  →  /pm:research  →  /pm:architect  →  (/pm:test)  →  /pm:plan  ─┐
                                                                          ├→  /pm:claim  →  /pm:execute  →  /pm:verify  →  /pm:complete
-/pm:express  (fast-path for small projects)  ────────────────────────────┘                     ▲       ▲          │              │
-                                                                                               │       │          ▼              ▼
+/pm:express   (fast-path for small projects)  ───────────────────────────┤                     ▲       ▲          │              │
+/pm:autoplan  (autonomous: runs the five above, each --auto)  ───────────┘                     │       │          ▼              ▼
                                                                                            /pm:resume  │     (rejected)    PR opened, merge
                                                                                                        │                          │
                                                                                                    /pm:handoff                    │
@@ -67,6 +67,8 @@ Each task file is markdown with YAML frontmatter capturing `status`, `depends_on
 `/pm:architect` consolidates the research into concrete architecture and tech-stack decisions (the file `architecture.md` is then read by `/pm:plan`, `/pm:execute`, and `/pm:verify` as the source of truth). `/pm:test` (optional) captures a per-version test strategy in `testing.md`; when present it shapes `/pm:plan`'s acceptance criteria and is binding on `/pm:execute` and `/pm:verify` — when absent, nothing changes. `/pm:claim` is optional for solo work and recommended for multi-developer teams — it makes your "I'm working on this" visible to teammates via git so two people don't double-implement the same task. `/pm:complete` opens the PR after `/pm:verify` accepts, and `/pm:resume` brings you back to a task's branch when you need to (e.g. PR feedback). `/pm:handoff` captures mid-task context when you need to stop before a task is done, so the next session (yourself later, or a teammate) can pick up without re-deriving where you left off. You can skip stages (`/pm:plan` will warn if there's no research or architecture but proceed) — the structure is opinionated, not rigid.
 
 `/pm:auto` wraps the execute → verify pair in an autonomous loop — each phase runs in an isolated subagent with a fresh context, state lives in the task files — until no ready tasks remain. You still run `/pm:complete` per task and `/pm:release` at the end.
+
+Each authoring command (`/pm:prd`, `/pm:research`, `/pm:architect`, `/pm:test`, `/pm:plan`) accepts an `--auto` flag: instead of interviewing you, the command makes the best decision at every point it would normally ask — stating each choice with a one-line rationale — and proceeds (hard blockers like a missing idea seed still stop). `/pm:autoplan` is the planning-phase sibling of `/pm:auto`: it runs that whole pipeline end to end, `prd → research → architect → test → plan`, **each stage in its own isolated `--auto` subagent**, then hands off to `/pm:auto`. Together they form a fully autonomous flow — **idea → tasks (`/pm:autoplan`) → done (`/pm:auto`)**. Unlike `/pm:express` (a compressed single-context fast path for *small* work), `/pm:autoplan` runs the full-rigor pipeline — the real two-persona PRD, real multi-persona research, full architecture and test strategy — with no human in the loop.
 
 `/pm:express` is the sanctioned fast path for **small projects** — a single-purpose feature, a focused fix, a one-shot prototype. One command runs a compressed PRD interview (PM persona only), picks one research persona if useful, lets you defer architecture if it's not strictly necessary, and generates 1–5 tasks. The artifacts it writes are the same shape the full pipeline produces, so `/pm:claim`, `/pm:execute`, `/pm:verify`, `/pm:complete`, and `/pm:handoff` work against express output unchanged. If scope grows later, graduate by running `/pm:research`, `/pm:architect`, and `/pm:replan` in place.
 
@@ -249,6 +251,19 @@ Autonomously loops the execute → verify pair until no ready tasks remain. Each
 The loop: verify any `done-pending-verify` backlog first, then execute the lowest-id ready task → verify it. ACCEPT → next ready task. REJECT → re-execute the same task. It stops and hands back to you on: all tasks done (suggests `/pm:release`), the same task rejected `--max-retries` times (default 2 — prints the verifier notes verbatim), an executor blocker (prints the `## Blocker` verbatim), or no eligible tasks left (e.g. everything remaining is claimed by teammates). A final summary lists completed, rejection-capped, skipped-claimed, and blocked tasks.
 
 What auto does NOT do: it never runs `/pm:claim`, `/pm:complete`, or `/pm:release`, never passes `--force`, never commits or pushes, and skips tasks claimed by someone else rather than taking them over. In multi-dev settings, `/pm:claim` before `/pm:auto` is still the recommended courtesy.
+
+#### `/pm:autoplan <one-line idea> | <slug> [--force]`
+The planning-phase sibling of `/pm:auto`: runs the full authoring pipeline — `prd → research → architect → test → plan` — autonomously, with **each stage in its own isolated subagent** invoking the real command with `--auto`. State lives on disk; the orchestrator only sequences stages and re-confirms each stage's artifact on disk before moving on (it never trusts the worker's report). When the last stage lands task files, it hands off to `/pm:auto <slug>`.
+
+```
+/pm:autoplan "build a tool that schedules recurring exports to S3"   # idea → ready-to-execute tasks
+/pm:autoplan recurring-s3-exports                                    # resume: run only the stages still missing
+/pm:autoplan recurring-s3-exports --force                           # re-run stages whose artifacts already exist
+```
+
+Pass a **one-line idea** to start a fresh project (the `prd` stage derives the slug), or an **existing slug** to resume — autoplan skips any stage whose artifact is already on disk and runs the rest (`--force` re-runs present stages, each via its command's overwrite-with-backup path). It stops and hands back on: all stages done (suggests `/pm:auto`), nothing left to author (resume where everything already exists), a PRD hard blocker (no idea seed), or an anomaly (a stage ran but its expected artifact didn't appear — names the stage). Like `/pm:auto`, the loop runs as a deterministic Workflow with an in-context fallback, and the research stage dispatches its own persona subagents in parallel beneath it.
+
+Use `/pm:autoplan` when you want a full-rigor project planned without sitting through the interviews; use `/pm:express` instead when the work is small and you'd rather shape a compressed plan by hand. What autoplan does NOT do: it never claims, executes, verifies, completes, or releases, and never commits or pushes.
 
 #### `/pm:complete [slug] [task-id] [--checkout-main]`
 Marks a verified task as complete and opens the PR. Commits any remaining implementation changes, pushes the branch, opens a PR via `gh pr create` with the task file as the PR description, and records the PR URL on the task. Refuses if status isn't `done`.
@@ -505,12 +520,14 @@ Each command ships with a model pre-selected for its workload, so you're not pay
 | Tier | Commands | Why |
 |---|---|---|
 | **Opus** (judgment / synthesis) | `/pm:prd`, `/pm:express`, `/pm:amend`, `/pm:research`, `/pm:rerun-research`, `/pm:architect`, `/pm:test`, `/pm:plan`, `/pm:replan`, `/pm:verify`, `/pm:handoff`, `/pm:version` | Multi-source synthesis, two-persona interviews, architecture and task decomposition with dependencies, independent acceptance-criteria judgment, distilling session context into a useful handoff. Express runs PRD interview, persona selection, and task decomposition in one pass — compression is high-judgment work. |
-| **Sonnet** (code / git / mechanical) | `/pm:execute`, `/pm:auto`, `/pm:complete`, `/pm:claim`, `/pm:resume`, `/pm:release`, `/pm:jira-init`, `/pm:jira-link`, `/pm:jira-create`, `/pm:jira-sync` | Code generation, git workflow, frontmatter edits, acli/gh shell-outs. Sonnet 4.6 handles these at a fraction of Opus cost. |
+| **Sonnet** (code / git / mechanical) | `/pm:execute`, `/pm:auto`, `/pm:autoplan`, `/pm:complete`, `/pm:claim`, `/pm:resume`, `/pm:release`, `/pm:jira-init`, `/pm:jira-link`, `/pm:jira-create`, `/pm:jira-sync` | Code generation, git workflow, frontmatter edits, acli/gh shell-outs. Sonnet 4.6 handles these at a fraction of Opus cost. |
 | **Haiku** (read-only display) | `/pm:status`, `/pm:list`, `/pm:next`, `/pm:gantt` | Read frontmatter, format output, conditional sections. No judgment required. |
 
 **`/pm:research` also dispatches its persona subagents on Sonnet** (the orchestrator stays on Opus). Each persona writes a focused ~800-word report — well within Sonnet's strength — and dispatching 3–6 in parallel makes the cost difference matter.
 
 **`/pm:auto` preserves the tiering across its loop:** the orchestrator stays on Sonnet (task picking, status checks — mechanical), while each execute subagent runs on Sonnet and each verify subagent on Opus, matching what `/pm:execute` and `/pm:verify` would use standalone.
+
+**`/pm:autoplan` preserves the tiering across its pipeline:** the orchestrator stays on Sonnet (sequencing stages, presence checks — mechanical), while each authoring stage subagent runs on Opus (matching what `/pm:prd`, `/pm:research`, `/pm:architect`, `/pm:test`, and `/pm:plan` use standalone), and the read-only artifact presence checks run on Haiku.
 
 ### Overriding the model for a command
 
