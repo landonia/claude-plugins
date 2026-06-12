@@ -1,7 +1,7 @@
 ---
 description: Interview the user (QA Lead + dynamic stack test SME) on test strategy — levels, coverage, tooling, fixtures, CI gating. Produces the optional per-version testing.md that drives testing in planning, execution, and verification.
 model: opus
-argument-hint: <slug>
+argument-hint: <slug> [--auto]
 ---
 
 # /pm:test — Test strategy decisions
@@ -10,6 +10,7 @@ You are running the `/pm:test` command. The user is deciding the test strategy f
 
 ## Inputs
 - Slug: `$ARGUMENTS` (use active-project resolution if empty).
+- `--auto` (anywhere in `$ARGUMENTS`) — **override mode.** Do not ask the user any questions. At every point where this command would normally interview, confirm, or present an `AskUserQuestion`, instead choose the best option from the PRD / research / architecture / repo signals and your own expertise, state the decision and a one-line rationale inline, and continue. Reserve stopping for hard blockers only (a missing REQUIRED input that cannot be inferred). When a gate would replace an existing artifact, take the **overwrite-with-backup** path automatically (back up / archive first — never lose data). Default (flag absent) = the interactive behavior described below.
 
 ## Step 1 — Resolve project and active version
 
@@ -26,6 +27,8 @@ If `.pm/<slug>/<active_version>/testing.md` already exists, ask via `AskUserQues
 - **Overwrite** — back up the existing file to `testing.md.bak.<timestamp>` and start fresh.
 - **Amend** — read the current file and run a focused diff-style interview that only revisits sections the user wants to change. Each change appends to the `## Amendments` section.
 - **Cancel** — stop.
+
+Under `--auto`, take **Overwrite** automatically — back up the existing file to `testing.md.bak.<timestamp>` first (overwrite-with-backup), then start fresh.
 
 ## Step 3 — Read context
 
@@ -53,7 +56,7 @@ You are simultaneously two interviewers throughout this session. Surface their n
 **Persona B — `<Stack> Test SME`.** Pick a stack framing for the SME based on:
 1. **Brownfield first:** if the repo has an existing stack, the SME is for that stack (e.g. "Java/Spring Test SME", "TypeScript/Node Test SME", "Python Test SME").
 2. **Architecture next:** if `architecture.md` exists, use its language/framework picks.
-3. **Greenfield:** propose a framing from PRD signals. State your pick in one sentence at the start and let the user override before continuing.
+3. **Greenfield:** propose a framing from PRD signals. State your pick in one sentence at the start and let the user override before continuing. Under `--auto`, state your pick and proceed without waiting for an override.
 
 The SME owns framework/tooling picks, fixture/factory idioms, mocking boundaries, and integration harness choices (e.g. Testcontainers vs in-memory).
 
@@ -64,6 +67,8 @@ Tag every question with `[QA]` or `[SME-<stack>]` so the user knows who's asking
 Conduct the interview in themed rounds. Each round asks 2–4 questions. Use `AskUserQuestion` for discrete choices; free-form prose for open-ended exploration. **Every multiple-choice question lists your recommendation first with a one-line rationale; "Other" is always available for custom overrides.**
 
 Skip any theme that's clearly N/A for this project (e.g. skip e2e tooling for a library; skip CI gating if there's no CI).
+
+Under `--auto`, do not ask any of the theme questions. Decide each applicable theme yourself using the same "recommendation first" logic, and record the choice with its one-line rationale in the drafted `testing.md`. Still produce a *real* strategy from the signals — override mode is never an excuse for a stub (see Output discipline).
 
 ### Themes to cover
 
@@ -76,7 +81,7 @@ Skip any theme that's clearly N/A for this project (e.g. skip e2e tooling for a 
 
 ## Step 6 — Draft and confirm
 
-Render the full `testing.md` to the user using the schema below. Allow per-section edits via free-form revisions. Iterate until the user confirms.
+Render the full `testing.md` to the user using the schema below. Allow per-section edits via free-form revisions. Iterate until the user confirms. Under `--auto`, skip the confirm-iterate loop and proceed straight to writing the file.
 
 ### `testing.md` schema
 
