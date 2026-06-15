@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/landonia/claude-plugins/compare/pm-v1.7.0...pm-v1.7.1) (2026-06-15)
+
+
+### Bug Fixes
+
+* **pm:** make /pm:auto --parallel worker isolation real ([#16](https://github.com/landonia/claude-plugins/issues/16)) ([23aa2bd](https://github.com/landonia/claude-plugins/commit/23aa2bded001234266250929cd3458862aac3d85))
+
 ## [1.7.0](https://github.com/landonia/claude-plugins/compare/pm-v1.6.2...pm-v1.7.0) (2026-06-12)
 
 
