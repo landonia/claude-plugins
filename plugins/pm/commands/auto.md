@@ -49,6 +49,10 @@ Record the pre-flight decisions for the loop:
 If nothing is actionable at all (no ready, no done-pending-verify, no resumable in-progress), exit early with the appropriate `/pm:next`-style message (all done / blocked / no tasks).
 
 **Parallel-mode pre-flight (only when `--parallel` is present).** Before dispatching the Step 3-P script, do this once, interactively:
+- **Cleanliness gate (do this FIRST — it prevents the file-loss failure mode).** Each execute/verify worker runs in a real, separate git worktree that the harness builds from a *commit*, so it can only see work that is already committed on `integrationBranch` — uncommitted or untracked files (notably the `.pm/<slug>/` task files themselves) are invisible to workers and can be silently clobbered. Run `git status --porcelain`. If it is non-empty:
+  - Explain the above plainly, then `AskUserQuestion`: **commit the `.pm/<slug>/` task files now and proceed**, or **abort** (default: abort — do NOT proceed on a dirty tree).
+  - If non-`.pm` changes are also present, surface them by name and default to **abort** — never auto-commit unrelated work.
+  - If the user chooses to commit, stage only the project's task files and commit, e.g. `git add .pm/<slug>/ && git commit -m "pm <slug>: snapshot tasks before --parallel"`, then continue. If they abort, stop here and tell them to commit/stash first.
 - State the contract change plainly: in `--parallel` mode each task runs in its own git worktree, the execute worker **commits** its work to a per-task branch (`pm/<slug>/<NNN>-<task-slug>`), and accepted work is **merged into the current branch** (`integrationBranch`). This relaxes the serial-mode "workers never commit" rule, and means this run will leave commits on your branch.
 - If `integrationBranch` is the repository's default branch (`main` or `master`), warn loudly and AskUserQuestion whether to proceed — merging task commits directly onto `main` is usually not what you want; suggest creating/switching to a feature branch first. Default to **not** proceeding.
 - The shared-tree concerns above (claimed in-progress tasks, blockers) still apply identically; the per-task worktrees only change where execution happens, not the pre-flight triage.
@@ -67,6 +71,7 @@ args = {
   slug:             "<slug>",
   version:          "<active_version>",
   tasksDir:         "<abs path to .pm/<slug>/<active_version>/tasks>",
+  tasksDirRel:      "<repo-relative tasks dir, e.g. '.pm/<slug>/<active_version>/tasks' — used by the worktree-isolated execute/verify workers; optional, the script derives it from tasksDir if omitted>",
   executeCmdPath:   "${CLAUDE_PLUGIN_ROOT}/commands/execute.md",
   verifyCmdPath:    "${CLAUDE_PLUGIN_ROOT}/commands/verify.md",
   rawArgs:          "<the verbatim $ARGUMENTS string, e.g. 'myproj --max-retries 5'>",
@@ -369,7 +374,12 @@ const _ra = String(args.rawArgs || '').replace(/--max-retries[=\s]+\d+/, ' ').re
 const _slugTok = _ra.trim().split(/\s+/).find(t => t && !t.startsWith('--'))
 const slug = args.slug || (_td && _td[1]) || _slugTok || 'unknown'
 const integrationBranch = String(args.integrationBranch || '').trim()
-log(`project = ${slug}, integration branch = ${integrationBranch || '∅'}`)
+// Repo-relative tasks dir for the worktree-isolated execute/verify workers (their cwd
+// is a separate working tree, so an absolute path baked to the main checkout would
+// escape isolation). Derived from tasksDir's '.pm/...' tail; falls back to absolute.
+const _tdRelMatch = String(args.tasksDir || '').match(/(\.pm\/.*)$/)
+const tasksDirRel = String(args.tasksDirRel || (_tdRelMatch && _tdRelMatch[1]) || args.tasksDir || '').trim()
+log(`project = ${slug}, integration branch = ${integrationBranch || '∅'}, tasks (rel) = ${tasksDirRel}`)
 
 // --- Guard: inputs must be populated, AND parallel mode needs the integration branch ---
 const _missing = ['tasksDir', 'executeCmdPath', 'verifyCmdPath'].filter(k => !args[k])
@@ -396,24 +406,24 @@ const skippedClaimed = Array.isArray(args.skippedClaimed) ? args.skippedClaimed.
 //     (pm/<slug>/<filename-without-.md>), exactly the /pm:claim convention. ---
 function executePrompt(id, resumeLine) {
   return [
-    `You are an execute worker dispatched by /pm:auto --parallel for project '${slug}', task ${id}. You are in an ISOLATED git worktree.`,
+    `You are an execute worker dispatched by /pm:auto --parallel for project '${slug}', task ${id}. You are running in a fresh, isolated git worktree the harness created for you — a separate working directory of this repo, and your cwd is its root. Nothing you do here can touch another worker's tree, so the git steps below are race-free. Use repo-relative paths (your cwd is the worktree root); do NOT use absolute paths into any other checkout.`,
     ``,
-    `SETUP first: find the '*.md' file in ${args.tasksDir} whose name starts with '${id}-'; let BR = 'pm/${slug}/<that filename without .md>'. Base your work on the integration branch so completed dependencies are present: if BR already exists (a prior attempt) run 'git checkout ' + BR; otherwise run 'git checkout -b ' + BR + ' ${integrationBranch}'.`,
+    `SETUP first: find the '*.md' file in ${tasksDirRel} whose name starts with '${id}-'; let BR = 'pm/${slug}/<that filename without .md>'. Base your work on the integration branch so completed dependencies are present: if BR already exists (a prior attempt) run 'git checkout ' + BR; otherwise run 'git checkout -b ' + BR + ' ${integrationBranch}'.`,
     ``,
     `Then invoke the Skill tool with skill 'pm:execute' and args '${slug} ${id}', and follow it fully. If the Skill tool is unavailable or 'pm:execute' is not available, instead Read '${args.executeCmdPath}' and follow its contents, treating $ARGUMENTS as '${slug} ${id}'.`,
     ``,
     `Rules: work ONLY task ${id} — never auto-pick another. Never pass --force. Do not run pm:verify or any other pm command. You cannot ask the user questions: take the safe default; if you cannot complete the task, follow pm:execute's blocker protocol exactly (leave status 'in-progress', write a '## Blocker' section with specifics) rather than improvising or flipping the status anyway.${resumeLine}`,
     ``,
-    `FINISH (parallel-mode contract — this REPLACES the serial 'never commit' rule): your worktree is DISCARDED after you return, so the commit on BR is the ONLY durable record. Persist your FINAL state whatever the outcome — the success case (status 'done-pending-verify') OR the blocker case (status 'in-progress' + a '## Blocker' section): write 'branch: ' + BR into the task file frontmatter, then 'git add -A && git commit -m "pm ${slug} ${id}"', then 'git checkout --detach' to RELEASE BR from this worktree (so the verifier and merge step can use it). Do NOT push. Touch ONLY this task's files. The orchestrator reads your committed status from BR; an uncommitted blocker would be lost.`,
+    `FINISH (parallel-mode contract — this REPLACES the serial 'never commit' rule): your worktree is DISCARDED after you return, so the commit on BR is the ONLY durable record (the branch ref persists in the shared repo even though this worktree is removed). Persist your FINAL state whatever the outcome — the success case (status 'done-pending-verify') OR the blocker case (status 'in-progress' + a '## Blocker' section): write 'branch: ' + BR into the task file frontmatter, then 'git add -A && git commit -m "pm ${slug} ${id}"'. Do NOT push. Touch ONLY this task's files. The orchestrator reads your committed status from BR; an uncommitted blocker would be lost.`,
     ``,
     `Report back ONLY: the task's final frontmatter 'status', the branch BR, a one-line summary, and the '## Blocker' text verbatim if you wrote one.`,
   ].join('\n')
 }
 function verifyPrompt(id) {
   return [
-    `You are an independent verifier dispatched by /pm:auto --parallel for project '${slug}', task ${id}. You are in a FRESH isolated git worktree with no uncommitted changes.`,
+    `You are an independent verifier dispatched by /pm:auto --parallel for project '${slug}', task ${id}. You are running in a fresh, isolated git worktree the harness created for you — a separate working directory of this repo with no uncommitted changes, and your cwd is its root. Use repo-relative paths; do NOT use absolute paths into any other checkout.`,
     ``,
-    `SETUP first: find the '*.md' file in ${args.tasksDir} whose name starts with '${id}-'; let BR be its 'branch:' frontmatter value (or 'pm/${slug}/<that filename without .md>'). Check out BR's tip in DETACHED HEAD so it doesn't matter whether another worktree still holds BR: 'git checkout --detach ' + BR. Review the work as the COMMITTED diff of BR against the integration branch — 'git diff ${integrationBranch}...HEAD' — NOT the uncommitted working tree.`,
+    `SETUP first: find the '*.md' file in ${tasksDirRel} whose name starts with '${id}-'; let BR be its 'branch:' frontmatter value (or 'pm/${slug}/<that filename without .md>'). Check out BR's tip in DETACHED HEAD so it doesn't matter whether another worktree still holds BR: 'git checkout --detach ' + BR. Review the work as the COMMITTED diff of BR against the integration branch — 'git diff ${integrationBranch}...HEAD' — NOT the uncommitted working tree.`,
     ``,
     `Then invoke the Skill tool with skill 'pm:verify' and args '${slug} ${id}', and follow it fully. If the Skill tool is unavailable or 'pm:verify' is not available, instead Read '${args.verifyCmdPath}' and follow its contents, treating $ARGUMENTS as '${slug} ${id}'.`,
     ``,
@@ -511,12 +521,12 @@ function runTask(id) {
     while (true) {
       const resumeLine = resumeAuthorized.includes(id)
         ? `\n\nThe user has already approved redoing this in-progress task — proceed past the redo confirmation.` : ''
-      await agent(executePrompt(id, resumeLine), { schema: WORKER, model: 'sonnet', label: `execute:${id}`, phase: 'Loop' })
+      await agent(executePrompt(id, resumeLine), { schema: WORKER, model: 'sonnet', isolation: 'worktree', label: `execute:${id}`, phase: 'Loop' })
       const e = await readOne(id)
       if (e.status === 'in-progress' && e.hasBlocker) { log(`task ${id} — execute ⊘ BLOCKED`); return { id, outcome: 'blocker', text: e.blockerText } }
       if (e.status !== 'done-pending-verify') { log(`task ${id} — execute ✗ ANOMALY (${e.status})`); return { id, outcome: 'anomaly', text: `execute left status '${e.status}'` } }
 
-      await agent(verifyPrompt(id), { schema: VERDICT, model: 'opus', label: `verify:${id}`, phase: 'Loop' })
+      await agent(verifyPrompt(id), { schema: VERDICT, model: 'opus', isolation: 'worktree', label: `verify:${id}`, phase: 'Loop' })
       const v = await readOne(id)
       if (v.status === 'rejected') {
         rej++
@@ -710,7 +720,7 @@ When a stop condition fires, print the Step 6 summary.
 This command exists to keep state in files, not in context:
 
 - Every phase — each execute, each verify, each retry — is a **brand-new subagent with a fresh context**. A retry of a rejected task has no memory of the prior attempt; it learns what went wrong solely from the `## Verifier notes` on disk. That is the plugin's existing contract ("rejection notes MUST be specific enough that a NEW executor with no memory of the prior attempt could pick up and finish").
-- The verifier-independence guarantee survives automation: the verify subagent never shares context with the executor that produced the work. In `--parallel` mode it is *strengthened* — execute and verify run in separate git worktrees, so they cannot even share a working tree.
+- The verifier-independence guarantee survives automation: the verify subagent never shares context with the executor that produced the work. In `--parallel` mode it is *strengthened* — each execute and verify worker runs in a real, harness-created git worktree (dispatched with `isolation: 'worktree'`), a genuinely separate working directory, so concurrent workers cannot share or race on a working tree. The main checkout is never touched by workers; only the serialized merge step writes there.
 - The control loop holds only counters and per-cycle status lines — no diffs, no implementation detail, no verification reasoning. Even the worker's structured return is advisory; flow decisions come only from the fresh on-disk read (the working tree in serial mode; the task's branch via `git show` in parallel mode).
 
 ## Output discipline
