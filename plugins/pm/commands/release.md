@@ -1,5 +1,5 @@
 ---
-description: Close out the active version of a project. Verifies all tasks are done, freezes the version folder, and writes RELEASE.md.
+description: Close out the active version of a project. Verifies all tasks are done, runs the final full-suite gate (/pm:gate), freezes the version folder, and writes RELEASE.md.
 model: sonnet
 argument-hint: <slug> [version]
 ---
@@ -33,6 +33,22 @@ Resolve these, then re-run /pm:release.
 If `tasks/` is empty or doesn't exist, refuse — there's nothing to release.
 
 If `RELEASE.md` already exists for this version, refuse — version already released. Suggest `/pm:version <slug> v<N+1>` to start the next one.
+
+## Step 2.5 — Final full-suite gate
+
+Status-done is necessary but not sufficient: per-task `/pm:verify` checks each task in isolation, so cross-cutting regressions (a change in a later task breaking an earlier one) can survive even when every task is `done`. Run the **final gate** before freezing the release:
+
+Invoke `/pm:gate <slug> <version>` — it runs the project's full test suite and holistically re-checks the cumulative work against the goals + every task's acceptance criteria, writing `.pm/<slug>/<version>/gate-report.md`.
+
+**Refuse to release** if the gate returns `verdict: FAIL`. Print the failures verbatim and stop:
+```
+Cannot release <version>. Final gate FAILED — see .pm/<slug>/<version>/gate-report.md:
+  - [test] LocaleFormatTest#frDate — fr-FR renders MM/DD, expected DD/MM
+  - [cross-cutting] 004↔002 — task 004's locale table overwrites task 002's keys
+Fix these (or run /pm:auto <slug>, which re-gates and auto-remediates), then re-run /pm:release.
+```
+
+A `no-suite` caveat (the project has no detectable test suite) is NOT a hard failure — surface it as a warning and continue, since the gate still ran the holistic goal/criteria check. Only proceed to Step 3 once the gate is PASS.
 
 ## Step 3 — Gather release details
 
