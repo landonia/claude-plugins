@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/landonia/claude-plugins/compare/pm-v1.7.1...pm-v1.8.0) (2026-06-15)
+
+
+### Features
+
+* **pm:** add final full-suite gate via /pm:gate, run by /pm:auto and /pm:release ([#18](https://github.com/landonia/claude-plugins/issues/18)) ([260f68b](https://github.com/landonia/claude-plugins/commit/260f68b71119c4ea7fe372ed698591d1c1f262d5))
+
 ## [1.7.1](https://github.com/landonia/claude-plugins/compare/pm-v1.7.0...pm-v1.7.1) (2026-06-15)
 
 
