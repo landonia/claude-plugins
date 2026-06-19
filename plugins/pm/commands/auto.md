@@ -12,9 +12,9 @@ Each cycle: execute the next ready task in a fresh subagent, then verify it in a
 
 The loop itself runs as a **deterministic Workflow** (Step 3): a real code `while` loop drives the cycles, so it cannot spuriously stop between tasks the way a prose loop can. Continuation is guaranteed by code, not by model disposition. If the Workflow tool is unavailable in this environment, fall back to the hardened in-context loop at the end of this file.
 
-By default this command runs **sequentially** — one execute/verify worker at a time against the shared working tree. With the opt-in `--parallel [N]` flag (Step 3-P) it instead runs up to N task pipelines concurrently, each in its own git worktree, merging accepted work back into your branch as it lands. Parallel mode trades the serial "workers never commit" contract for real concurrency and requires the Workflow tool; without it, `--parallel` degrades to the sequential fallback. **Sequential is the default; nothing below the `--parallel` sections changes unless the flag is present.**
+By default this command runs **sequentially** — one execute/verify worker at a time against the shared working tree, with the orchestrator committing each accepted task to your branch as a recovery point (workers themselves never commit). With the opt-in `--parallel [N]` flag (Step 3-P) it instead runs up to N task pipelines concurrently, each in its own git worktree, merging accepted work back into your branch as it lands. Parallel mode requires the Workflow tool; without it, `--parallel` degrades to the sequential fallback. **Sequential is the default; nothing below the `--parallel` sections changes unless the flag is present.**
 
-This command covers the execute/verify phase plus a **final full-suite gate** once every task is done (Step 4's `/pm:gate` — runs the whole test suite and holistically re-checks the goals + all acceptance criteria, then auto-remediates and re-gates on failure). It never claims, completes, or releases, and only recommends `/pm:release` when the gate passes. (In `--parallel` mode it does commit accepted work to per-task branches, merge them into your current branch, and commit any gate remediation there — see Step 3-P — but it still never pushes, opens PRs, or releases.)
+This command covers the execute/verify phase plus a **full-suite gate** (Step 4's `/pm:gate` — runs the whole test suite and holistically re-checks the goals + all acceptance criteria). The gate runs on **every non-trivial exit**: remediating-and-re-gating on the all-done path, and **report-only** on any other stop (rejection-cap, blocker, anomaly, cycle-cap) so a run that stops early still reports the true suite state instead of looking clean. It never claims, completes, or releases, and only recommends `/pm:release` when every task is done and the gate passes. (In `--parallel` mode it commits accepted work to per-task branches, merges them into your current branch, and commits any gate remediation there — see Step 3-P — but it still never pushes, opens PRs, or releases.)
 
 ## Inputs
 Parse `$ARGUMENTS`:
@@ -218,12 +218,18 @@ function verifyPrompt(id) {
     `When finished, report back ONLY: the verdict (ACCEPT/REJECT), the task's final frontmatter 'status' as read from the task file, and a one-line summary.`,
   ].join('\n')
 }
-// Final full-suite gate: runs once after every task is done, before /pm:auto recommends release.
-function gatePrompt() {
+// Final full-suite gate. Remediating on the all-done path; report-only on any other exit
+// (reportOnly=true passes --report-only so pm:gate RUNS the suite even though not every task
+// is done, instead of short-circuiting on the precondition — surfaces the true suite state).
+function gatePrompt(reportOnly) {
+  const flag = reportOnly ? ' --report-only' : ''
+  const lead = reportOnly
+    ? `You are a release-readiness gate dispatched by /pm:auto for project '${slug}', version '${version}'. The run has STOPPED before every task is done; your job is to surface the TRUE state of the CUMULATIVE work — run the full suite and judge it cold. This is report-only: it will FAIL (tasks remain), but report the real suite/cross-cutting state, not just "a task isn't done".`
+    : `You are a final release-readiness gate dispatched by /pm:auto for project '${slug}', version '${version}'. Every task is reportedly done; your job is to prove the CUMULATIVE work meets spec before /pm:auto recommends release. You did NOT write any of this code — judge the whole body of work cold.`
   return [
-    `You are a final release-readiness gate dispatched by /pm:auto for project '${slug}', version '${version}'. Every task is reportedly done; your job is to prove the CUMULATIVE work meets spec before /pm:auto recommends release. You did NOT write any of this code — judge the whole body of work cold.`,
+    lead,
     ``,
-    `Invoke the Skill tool with skill 'pm:gate' and args '${slug} ${version}', and follow that command fully. If the Skill tool is unavailable or 'pm:gate' is not in your available skills, instead Read the file '${args.gateCmdPath}' and follow its contents as your instructions, treating $ARGUMENTS as '${slug} ${version}'.`,
+    `Invoke the Skill tool with skill 'pm:gate' and args '${slug} ${version}${flag}', and follow that command fully. If the Skill tool is unavailable or 'pm:gate' is not in your available skills, instead Read the file '${args.gateCmdPath}' and follow its contents as your instructions, treating $ARGUMENTS as '${slug} ${version}${flag}'.`,
     ``,
     `Rules: read-only with respect to implementation and task files — you may RUN the project's full test suite, read the PRD/goals/testing.md/tasks/diff, and write '.pm/${slug}/${version}/gate-report.md', but never modify implementation, never flip any task's status, and never commit or push. If the full suite fails, or the cumulative implementation does not satisfy the PRD goals + every task's acceptance criteria (especially cross-cutting regressions that per-task verification could not catch), the verdict is FAIL with specific, actionable failures.`,
     ``,
@@ -241,6 +247,21 @@ function fixPrompt() {
     `Rules: take safe defaults; never lower the bar, never delete or weaken tests to make them pass, never flip task statuses. Touch only what the failures require. Never commit or push (your edits stay in the working tree; the next gate reads them).`,
     ``,
     `When finished, report back ONLY: a one-line summary of what you changed, and 'status' = 'done' (or 'in-progress' with a brief blocker note if you could not fix it).`,
+  ].join('\n')
+}
+// Orchestrator commit step (serial mode only): records each accepted task's work to the
+// integration branch so there's a per-task recovery point and an audit trail. Workflow
+// scripts cannot run shell directly, so this is a minimal git-only agent. Never pushes.
+function commitPrompt(id, title, msg) {
+  const m = msg || `pm ${slug}: task ${id} — ${title || ''}`.trim()
+  return [
+    `You are a commit step dispatched by /pm:auto for project '${slug}'. Do EXACTLY one thing: stage and commit the current working tree on the checked-out integration branch, then stop.`,
+    ``,
+    `Run: git add -A && git commit -m ${JSON.stringify(m)}`,
+    ``,
+    `Rules: run ONLY that one git command. Never push, never --force, never branch/checkout/merge/reset, never touch task files or code. If there is nothing to commit (clean tree), that is fine — report it and stop. Do not run any pm command.`,
+    ``,
+    `Report back ONLY: status = 'committed' (or 'nothing to commit'), and summary = the short commit hash (or 'clean tree').`,
   ].join('\n')
 }
 
@@ -284,6 +305,30 @@ const ready = (t, byId) =>
    (t.status === 'in-progress' && resumeAuthorized.includes(t.id))) &&
   (t.depends_on || []).every(d => byId[d] && byId[d].status === 'done')
 
+// Full-suite gate. remediate:true (all-done path) loops gate -> fix -> re-gate up to
+// maxRetries; remediate:false (any other non-trivial exit) runs the gate exactly once,
+// report-only, so the summary reflects the TRUE suite state. Always sets out.gate.
+async function runGate({ remediate }) {
+  let attempt = 0
+  while (true) {
+    log(`running final full-suite gate (attempt ${attempt + 1}${remediate ? '' : ', report-only'})`)
+    const g = await agent(gatePrompt(!remediate), { schema: GATE, model: 'opus', label: 'final-gate', phase: 'Loop' })
+    out.gate = g
+    const pass = g && String(g.verdict).toUpperCase() === 'PASS'
+    if (!remediate) return g
+    if (pass) return g
+    attempt++
+    if (attempt > maxRetries) {
+      out.gateFailed = { attempts: attempt, failures: (g && g.failures) || [] }
+      log(`gate still FAILING after ${maxRetries} remediation attempt(s) — stopping`)
+      return g
+    }
+    log(`gate FAILED — dispatching remediation worker (${attempt}/${maxRetries})`)
+    await agent(fixPrompt(), { schema: WORKER, model: 'sonnet', label: `gate-fix:${attempt}`, phase: 'Loop' })
+  }
+}
+
+let lastTasks = []   // newest snapshot, hoisted so the post-loop report-only gate can see it
 while (true) {
   // (1) Disk is truth — a fresh, independent snapshot every iteration.
   let snap = await agent(snapshotPrompt, { schema: SNAPSHOT, model: 'sonnet', label: 'snapshot', phase: 'Loop' })
@@ -303,6 +348,7 @@ while (true) {
   }
   const byId = {}
   for (const t of tasks) byId[t.id] = t
+  lastTasks = tasks   // remember for the post-loop report-only gate
 
   if (maxCycles === null) {
     const notDone = tasks.filter(t => t.status !== 'done').length
@@ -326,7 +372,12 @@ while (true) {
       }
     } else { // verify
       if (t && t.status === 'done') {
-        if (!completed.includes(last.id)) completed.push(last.id)
+        if (!completed.includes(last.id)) {
+          completed.push(last.id)
+          // Commit the accepted task to the integration branch: per-task recovery point
+          // + audit trail. The orchestrator commits (via a git-only agent); workers never do.
+          await agent(commitPrompt(last.id, t.title), { schema: WORKER, model: 'haiku', label: `commit:${last.id}`, phase: 'Loop' })
+        }
         log(`[cycle ${cycle}] task ${last.id} ${t.title} — verify ✓ ACCEPTED`)
       } else if (t && t.status === 'rejected') {
         rejections[last.id] = (rejections[last.id] || 0) + 1
@@ -363,21 +414,14 @@ while (true) {
   if (!pick) {
     if (tasks.length > 0 && tasks.every(t => t.status === 'done')) {
       // Every task is done — run the final full-suite gate, remediate-and-re-gate up to maxRetries.
-      let attempt = 0
-      while (true) {
-        log(`[cycle ${cycle}] all tasks done — running final full-suite gate (attempt ${attempt + 1})`)
-        const g = await agent(gatePrompt(), { schema: GATE, model: 'opus', label: 'final-gate', phase: 'Loop' })
-        out.gate = g
-        if (g && String(g.verdict).toUpperCase() === 'PASS') { out.reason = 'all tasks done — gate passed'; break }
-        attempt++
-        if (attempt > maxRetries) {
-          out.reason = 'all tasks done — GATE FAILED'
-          out.gateFailed = { attempts: attempt, failures: (g && g.failures) || [] }
-          log(`[cycle ${cycle}] gate still FAILING after ${maxRetries} remediation attempt(s) — stopping`)
-          break
-        }
-        log(`[cycle ${cycle}] gate FAILED — dispatching remediation worker (${attempt}/${maxRetries})`)
-        await agent(fixPrompt(), { schema: WORKER, model: 'sonnet', label: `gate-fix:${attempt}`, phase: 'Loop' })
+      const g = await runGate({ remediate: true })
+      if (g && String(g.verdict).toUpperCase() === 'PASS') {
+        out.reason = 'all tasks done — gate passed'
+        // Checkpoint any remaining working-tree changes (e.g. gate-remediation fixes) so the
+        // final accepted state is fully committed, not left dangling in the tree.
+        await agent(commitPrompt(null, null, `pm ${slug}: final gate checkpoint`), { schema: WORKER, model: 'haiku', label: 'commit:gate', phase: 'Loop' })
+      } else {
+        out.reason = 'all tasks done — GATE FAILED'
       }
     } else {
       out.reason = 'no eligible tasks'
@@ -394,6 +438,15 @@ while (true) {
     await agent(verifyPrompt(pick.id), { schema: VERDICT, model: 'opus', label: `verify:${pick.id}`, phase: 'Loop' })
   }
   last = { phase, id: pick.id }
+}
+
+// Full-suite gate on EVERY non-trivial exit. The all-done branch already ran it (remediating
+// and setting out.gate); here we run it once, report-only, for capped/blocked/anomaly/cycle-cap
+// exits — so a stopped run reports the TRUE suite state instead of looking clean. Skip when no
+// work happened (snapshot empty / all still pending) or the all-done path already gated.
+if (out.gate === null && lastTasks.length && lastTasks.some(t => t.status !== 'pending') && out.reason !== 'snapshot empty') {
+  log(`run stopped (${out.reason}) — running full-suite gate report-only to surface true suite state`)
+  await runGate({ remediate: false })
 }
 
 out.cycles = cycle
@@ -531,12 +584,17 @@ function reverifyPrompt(id) {
     `Report ONLY: verdict (ACCEPT/REJECT) and summary.`,
   ].join('\n')
 }
-// Final full-suite gate (parallel): runs once in the MAIN tree after every task is merged & done.
-function gatePrompt() {
+// Full-suite gate (parallel): runs once in the MAIN tree. Remediating when every task merged &
+// done; report-only (reportOnly=true -> --report-only) on any other exit where work was merged.
+function gatePrompt(reportOnly) {
+  const flag = reportOnly ? ' --report-only' : ''
+  const lead = reportOnly
+    ? `You are a release-readiness gate dispatched by /pm:auto --parallel for project '${slug}', version '${version}'. You operate in the MAIN working tree, on the integration branch '${integrationBranch}', where accepted task work has been merged. Do NOT create a worktree. The run STOPPED before every task is done; surface the TRUE state of the CUMULATIVE work — run the full suite and judge it cold. This is report-only: it will FAIL (tasks remain), but report the real suite/cross-cutting state.`
+    : `You are a final release-readiness gate dispatched by /pm:auto --parallel for project '${slug}', version '${version}'. You operate in the MAIN working tree, on the integration branch '${integrationBranch}', where all accepted task work has been merged. Do NOT create a worktree. Every task is done; prove the CUMULATIVE work meets spec before /pm:auto recommends release — judge the whole body of work cold.`
   return [
-    `You are a final release-readiness gate dispatched by /pm:auto --parallel for project '${slug}', version '${version}'. You operate in the MAIN working tree, on the integration branch '${integrationBranch}', where all accepted task work has been merged. Do NOT create a worktree. Every task is done; prove the CUMULATIVE work meets spec before /pm:auto recommends release — judge the whole body of work cold.`,
+    lead,
     ``,
-    `Invoke the Skill tool with skill 'pm:gate' and args '${slug} ${version}', and follow that command fully. If the Skill tool is unavailable or 'pm:gate' is not in your available skills, instead Read the file '${args.gateCmdPath}' and follow its contents as your instructions, treating $ARGUMENTS as '${slug} ${version}'.`,
+    `Invoke the Skill tool with skill 'pm:gate' and args '${slug} ${version}${flag}', and follow that command fully. If the Skill tool is unavailable or 'pm:gate' is not in your available skills, instead Read the file '${args.gateCmdPath}' and follow its contents as your instructions, treating $ARGUMENTS as '${slug} ${version}${flag}'.`,
     ``,
     `Rules: read-only with respect to implementation and task files — you may RUN the project's full test suite, read the PRD/goals/testing.md/tasks/diff, and write '.pm/${slug}/${version}/gate-report.md', but never modify implementation, never flip any task's status, and never commit or push. If the full suite fails, or the cumulative implementation does not satisfy the PRD goals + every task's acceptance criteria (especially cross-cutting regressions that per-task verification could not catch), the verdict is FAIL with specific, actionable failures.`,
     ``,
@@ -682,25 +740,35 @@ const unreachable = tasks.filter(t => !done.has(t.id) && !(t.id in results) && !
 const allDone = tasks.every(t => done.has(t.id))
 const failures = blocked.length + rejectionCapped.length + anomalies.length + mergeFailed.length
 
-// Final full-suite gate — only when every task merged & done. Runs once in the main tree
-// (post-drain, serial), remediate-and-re-gate up to maxRetries. A per-task failure never
-// reaches here, so the gate gates exactly the all-green case.
-let gate = null, gateFailed = null
-if (allDone) {
-  let attempt = 0
+// Full-suite gate — runs in the main tree (post-drain, serial) against committed integration
+// state. All-done -> remediate-and-re-gate up to maxRetries. Any other exit where accepted work
+// was merged -> run once, report-only, so a stopped run reports the TRUE suite state. A per-task
+// failure never blocks the gate from running; it just doesn't trigger remediation.
+async function runGate({ remediate }) {
+  let g = null, gateFailed = null, attempt = 0
   while (true) {
-    log(`all tasks done — running final full-suite gate (attempt ${attempt + 1})`)
-    gate = await agent(gatePrompt(), { schema: GATE, model: 'opus', label: 'final-gate', phase: 'Loop' })
-    if (gate && String(gate.verdict).toUpperCase() === 'PASS') break
+    log(`running final full-suite gate (attempt ${attempt + 1}${remediate ? '' : ', report-only'})`)
+    g = await agent(gatePrompt(!remediate), { schema: GATE, model: 'opus', label: 'final-gate', phase: 'Loop' })
+    const pass = g && String(g.verdict).toUpperCase() === 'PASS'
+    if (!remediate || pass) break
     attempt++
     if (attempt > maxRetries) {
-      gateFailed = { attempts: attempt, failures: (gate && gate.failures) || [] }
+      gateFailed = { attempts: attempt, failures: (g && g.failures) || [] }
       log(`gate still FAILING after ${maxRetries} remediation attempt(s) — stopping`)
       break
     }
     log(`gate FAILED — dispatching remediation worker (${attempt}/${maxRetries})`)
     await agent(fixPrompt(), { schema: WORKER, model: 'sonnet', label: `gate-fix:${attempt}`, phase: 'Loop' })
   }
+  return { gate: g, gateFailed }
+}
+let gate = null, gateFailed = null
+if (allDone) {
+  ({ gate, gateFailed } = await runGate({ remediate: true }))
+} else if (completed.length > 0) {
+  // Accepted work was merged to the integration branch — surface its true suite state even
+  // though the run is stopping for another reason (blocked / capped / anomaly / merge-failed).
+  ({ gate } = await runGate({ remediate: false }))
 }
 const gatePass = allDone && gate && String(gate.verdict).toUpperCase() === 'PASS'
 const reason = allDone ? (gatePass ? 'all tasks done — gate passed' : 'all tasks done — GATE FAILED')
@@ -738,7 +806,7 @@ These are the prompts the loop dispatches (embedded in the Step 3 script as `exe
 >
 > When finished, report back ONLY: the verdict (ACCEPT/REJECT), the task's final frontmatter `status` as read from the task file, and a one-line summary. No verification reasoning — your notes live in the task file.
 
-These two run per cycle. The next two run **once, only after every task is `done`** (the all-done branch of Step 3 / Step 3-P) — the final-gate and its remediation worker. Keep them in sync with the `gatePrompt()` / `fixPrompt()` builders in both scripts and the fallback step.
+These two run per cycle. The **final-gate worker** now runs on **every non-trivial exit**, not only the all-done one: with remediation on the all-done path (re-fix + re-gate up to `max_retries`), and **once, report-only** on any other stop where work happened (rejection-cap, blocker, anomaly, cycle-cap) so the summary reflects the true suite state. Its **remediation worker** is dispatched only on the all-done remediating path. Keep them in sync with the `runGate()` helper / `gatePrompt()` / `fixPrompt()` builders in both scripts and the fallback step.
 
 **Final gate worker** (`model: opus`):
 
@@ -747,6 +815,8 @@ These two run per cycle. The next two run **once, only after every task is `done
 > Invoke the Skill tool with skill `pm:gate` and args `<slug> <version>`, and follow that command fully. If the Skill tool is unavailable or `pm:gate` is not in your available skills, instead read `${CLAUDE_PLUGIN_ROOT}/commands/gate.md` and follow its contents as your instructions, treating `$ARGUMENTS` as `<slug> <version>`.
 >
 > Rules: read-only with respect to implementation and task files — RUN the full test suite, read the PRD/goals/testing.md/tasks/diff, write only `.pm/<slug>/<version>/gate-report.md`; never modify implementation, never flip task status, never commit or push. FAIL with specific, actionable failures if the suite is red or the integrated work doesn't satisfy the goals + every task's acceptance criteria (especially cross-cutting regressions). *(Parallel mode: you run in the MAIN tree on `<integrationBranch>`; do not create a worktree.)*
+
+On a **report-only** dispatch (any non-all-done exit), the orchestrator appends `--report-only` to the `pm:gate` args and the worker's lead line says the run stopped before every task is done. `--report-only` makes `pm:gate` RUN the suite instead of short-circuiting on its "every task done" precondition, so the verdict still FAILs (tasks remain) but `suiteRan` + `failures[]` reflect the real suite state. The remediation worker is **not** dispatched in report-only mode.
 >
 > Report back ONLY the structured GATE result: verdict (PASS/FAIL), suiteRan, testCommand, suiteSource, a one-paragraph summary, and the failures array.
 
@@ -757,6 +827,16 @@ These two run per cycle. The next two run **once, only after every task is `done
 > Rules: safe defaults; never lower the bar, never weaken/delete tests to pass, never flip task statuses. Touch only what the failures require. **Serial mode: never commit or push** (edits stay in the working tree; the next gate reads them). **Parallel mode: commit the fix to `<integrationBranch>` (`git add -A && git commit`), never push.**
 >
 > Report back ONLY: a one-line summary of what you changed, and `status` = `done` (or `in-progress` with a brief blocker note if you could not fix it).
+
+**Commit step** (`model: haiku`) — **serial mode only**, dispatched by the orchestrator after each ACCEPT (and a final checkpoint after the all-done gate passes). This is how serial mode gets a per-task recovery point + audit trail without letting workers commit:
+
+> You are a commit step dispatched by `/pm:auto` for project `<slug>`. Do EXACTLY one thing: `git add -A && git commit -m "pm <slug>: task <NNN> — <title>"` on the checked-out integration branch, then stop.
+>
+> Rules: run ONLY that one git command. Never push, never `--force`, never branch/checkout/merge/reset, never touch task files or code, run no pm command. Nothing to commit (clean tree) is fine — report it and stop.
+>
+> Report back ONLY: `status` = `committed` (or `nothing to commit`) and a one-line `summary` (the short hash, or `clean tree`).
+
+(`--parallel` mode does not use this — execute/verify/merge workers already commit to branches.)
 
 Never paste task-file, PRD, or code content into a subagent prompt beyond slug + task id (+ version for the gate) — the subagent reads everything from disk itself. Whatever the subagent reports, the orchestrator re-reads status from disk via the next snapshot.
 
@@ -774,7 +854,7 @@ In `--parallel` mode the same execute/verify intent applies, but each worker run
 
 ## Step 5 — Stop conditions
 
-The loop computes these in code (Step 3 script) from each fresh snapshot. It stops and runs Step 6 when any fires:
+The loop computes these in code (Step 3 script) from each fresh snapshot. It stops and runs Step 6 when any fires. **Regardless of which fires, the full-suite gate runs before Step 6** whenever any work happened: remediating on the all-done path, **report-only** (one pass, no auto-fix) on every other exit — so a stopped run reports the true suite state instead of looking clean. (Skipped only on `snapshot empty` / no work done.)
 
 - **All done → gate** — no eligible ready and no done-pending-verify tasks remain, and every task is `done`. The loop does NOT stop here: it runs the **final full-suite gate** (`/pm:gate`, Step 4) once. On PASS → `reason: 'all tasks done — gate passed'`. On FAIL → it dispatches a remediation worker and re-gates, up to `max_retries` times (the same `--max-retries` cap; `--max-retries 0` = no auto-fix). If still failing after the cap → **Gate failed** below.
 - **Gate failed** — the final gate is still FAIL after `max_retries` remediation attempts. (`reason: 'all tasks done — GATE FAILED'`) Print the `gate.failures` / `.pm/<slug>/<active_version>/gate-report.md` verbatim and do NOT recommend release. Hint: fix the reported cross-cutting issues, then re-run `/pm:auto <slug>` (it re-gates) or `/pm:gate <slug>`.
@@ -785,7 +865,7 @@ The loop computes these in code (Step 3 script) from each fresh snapshot. It sto
 - **Snapshot empty** — the snapshot agent returned 0 tasks twice in a row for a non-empty tasks dir. A read failure, NOT a finished project; the loop aborts loud rather than masquerading as "no eligible tasks". (`reason: 'snapshot empty'`) Hint: re-run `/pm:auto <slug>`; if it persists, the snapshot read is broken.
 - **Anomaly** — a worker died mid-work, refused, or failed (disk status didn't advance as expected). Surface the worker's state.
 
-**Parallel mode (Step 3-P) differs in one key way: a per-task failure does NOT halt the run.** Serial mode stops at the first blocker / retry-cap / anomaly. Parallel mode lets every in-flight pipeline **drain**, then reports ALL outcomes together — so one task's blocker doesn't waste sibling work already running. The aggregate `reason` is `'all tasks done — gate passed'` only when every task is `done` AND the final gate passes (the gate fires once, post-drain, in the main tree; remediation commits to `<integrationBranch>`); if the gate stays red after `max_retries` it is `'all tasks done — GATE FAILED'`. Otherwise it surfaces the full sets `blocked[]`, `rejectionCapped[]`, `anomalies[]`, and the parallel-only:
+**Parallel mode (Step 3-P) differs in one key way: a per-task failure does NOT halt the run.** Serial mode stops at the first blocker / retry-cap / anomaly. Parallel mode lets every in-flight pipeline **drain**, then reports ALL outcomes together — so one task's blocker doesn't waste sibling work already running. The aggregate `reason` is `'all tasks done — gate passed'` only when every task is `done` AND the final gate passes (the gate fires once, post-drain, in the main tree; remediation commits to `<integrationBranch>`); if the gate stays red after `max_retries` it is `'all tasks done — GATE FAILED'`. Otherwise it surfaces the full sets `blocked[]`, `rejectionCapped[]`, `anomalies[]` — and still runs the gate **report-only** (no remediation) when any accepted work was merged, so `gate` carries the true suite state — plus the parallel-only:
 - **Merge failed** — a task was ACCEPTED on its branch but could not be integrated: the merge worker couldn't resolve a conflict, or the post-resolution re-verify rejected the merged result. The task branch is left intact for manual integration. (`mergeFailed[]`)
 - **Unreachable** — a task never became eligible because a dependency failed (blocked/capped/anomaly/merge-failed). Reported so it's clear why it didn't run. (`unreachable[]`)
 
@@ -801,10 +881,14 @@ Rejection-capped:  —  (or: 004 — 2 rejections, see ## Verifier notes)
 Skipped (claimed): 002 (Alice <a@example.com>)
 Blocked:           —  (or: 006 — see ## Blocker)
 Final gate:        PASS — `mvn verify` green; goals + all acceptance criteria hold
-                   (or, on FAIL, list gate.failures verbatim, e.g.:
-                    FAIL — see .pm/<slug>/<version>/gate-report.md
+                   (ALWAYS print this line whenever `gate` is set — the gate now runs on every
+                    non-trivial exit, report-only when the run stopped for another reason. A
+                    capped/blocked run must NOT look clean. On FAIL, list gate.failures verbatim, e.g.:
+                    FAIL — 72 failures across 11 files, see .pm/<slug>/<version>/gate-report.md
                       - [test] LocaleFormatTest#frDate — fr-FR renders MM/DD, expected DD/MM
-                      - [cross-cutting] 004↔002 — task 004's locale table overwrites task 002's keys)
+                      - [cross-cutting] 004↔002 — task 004's locale table overwrites task 002's keys
+                    Example of a stopped-AND-red run: headline `retry cap hit on 015`
+                    AND `Final gate: FAIL — 72 failures across 11 files (see gate-report.md)`.)
 Next: /pm:release <slug>   (ONLY when reason is 'all tasks done — gate passed'.
       On 'GATE FAILED': do NOT recommend release — say "Fix the gate failures above, then re-run
       /pm:auto <slug> (it re-gates)". Otherwise a stop-reason-appropriate hint: /pm:execute <slug> <NNN>, /pm:status <slug>, …)
@@ -822,7 +906,9 @@ Merge-failed:       003 — conflict on src/gateway.ts re-verify rejected; branc
 Unreachable:        007 (depends on 005)
 Skipped (claimed):  —
 Final gate:         PASS — full suite green; goals + criteria hold
-                    (or, on FAIL: see .pm/<slug>/<version>/gate-report.md and list gate.failures verbatim)
+                    (ALWAYS print whenever `gate` is set — it runs report-only on a drained-with-failures
+                     exit too, not only all-done. On FAIL: see .pm/<slug>/<version>/gate-report.md and
+                     list gate.failures verbatim. A drained-but-red run must not look clean.)
 Next: /pm:complete <slug> <NNN> per completed task to open PRs (parallel mode leaves accepted work
       committed on your branch and on per-task branches; it does not push or open PRs itself).
       Resolve any merge-failed branches manually, then re-run /pm:auto <slug> for the rest.
@@ -854,9 +940,11 @@ Repeat until a Step 5 stop condition fires:
 | execute | `in-progress` + `## Blocker`         | stop — print the `## Blocker` section verbatim                  |
 | execute | `in-progress`, no `## Blocker`       | anomaly — subagent died mid-work; stop, surface its report     |
 | execute | unchanged (`pending`/`rejected`)     | anomaly — subagent refused or failed; stop, surface            |
-| verify  | `done`                               | record completed; next cycle                                   |
+| verify  | `done`                               | record completed; **commit** it (see 3c-commit); next cycle    |
 | verify  | `rejected`                           | increment rejection count; retry, or cap-stop if count = max_retries |
 | verify  | unchanged (`done-pending-verify`)    | anomaly — verify subagent failed; stop, surface                |
+
+**3c-commit. Commit each ACCEPT (orchestrator, in-context).** On a `verify → done`, before continuing, run `git add -A && git commit -m "pm <slug>: task <NNN> — <title>"` on the integration branch yourself (you have a shell here). Never push, never `--force`. This gives a per-task recovery point + audit trail; workers still never commit. Nothing to commit (clean tree) is fine — continue.
 
 **3d. Report** one status line per cycle, then immediately continue per the continuation contract:
 
@@ -866,9 +954,11 @@ Repeat until a Step 5 stop condition fires:
 [cycle 5] task 006 <title> — execute ⊘ BLOCKED
 ```
 
-**3e. Final gate (only when every task reached `done`).** Before printing the all-done summary, run the final full-suite gate exactly once: invoke `/pm:gate <slug> <version>` directly (you are in-context, so no subagent dispatch is needed — but stay read-only on code per the gate's rules). If it returns PASS → stop with `reason: 'all tasks done — gate passed'`. If FAIL → fix the failures it wrote to `.pm/<slug>/<version>/gate-report.md` (yourself, in-context), then re-run `/pm:gate`; repeat up to `max_retries` times. If still FAIL after the cap → stop with `reason: 'all tasks done — GATE FAILED'`, print the gate failures, and do NOT recommend release. This mirrors the serial script's all-done block.
+**3e. Final gate — runs on EVERY non-trivial exit.** Before printing the Step 6 summary, invoke `/pm:gate <slug> <version>` directly (you are in-context, so no subagent dispatch is needed — but stay read-only on code per the gate's rules), in one of two modes:
+- **All tasks `done` (remediating):** run the gate. PASS → stop with `reason: 'all tasks done — gate passed'` (commit any remaining tree changes per 3c-commit). FAIL → fix the failures it wrote to `.pm/<slug>/<version>/gate-report.md` (yourself, in-context), commit, then re-run `/pm:gate`; repeat up to `max_retries` times. If still FAIL after the cap → stop with `reason: 'all tasks done — GATE FAILED'`, print the gate failures, do NOT recommend release. This mirrors the serial script's all-done block.
+- **Any other stop where work happened** (blocker / retry-cap / anomaly / cycle-cap — at least one task past `pending`): run the gate **once, report-only** by invoking `/pm:gate <slug> <version> --report-only` (the `--report-only` flag makes the gate RUN the suite instead of short-circuiting on its "every task done" precondition). Do NOT fix or re-gate (the run is already stopping for another reason). Carry its verdict into the Step 6 summary so a stopped run reports the true suite state. Skip only on `snapshot empty` / no work done.
 
-When a stop condition fires, print the Step 6 summary.
+When a stop condition fires, print the Step 6 summary (always include the `Final gate:` line whenever the gate ran).
 
 ## Context isolation guarantees
 
@@ -882,7 +972,7 @@ This command exists to keep state in files, not in context:
 - Never pass `--force` to anything. Never claim, complete, or release.
 - Never edit task files yourself — subagents own all status flips. The loop only reads (via the snapshot/read agents).
 - Disk is truth: re-read frontmatter every iteration; worker reports are advisory.
-- **Serial mode:** serial dispatch only — concurrent worker calls are a bug; don't commit/push, and don't let subagents commit/push (including the final-gate and gate-remediation workers — their edits stay in the working tree).
+- **Serial mode:** serial dispatch only — concurrent worker calls are a bug. **Workers never commit/push** (execute, verify, final-gate, gate-remediation — their edits stay in the working tree). The **orchestrator** commits each ACCEPT (and a final checkpoint after the all-done gate passes) to the integration branch via the dedicated commit step — a per-task recovery point + audit trail. **Nobody ever pushes.** This is the only writing the loop does to git history in serial mode.
 - **Parallel mode (`--parallel`):** up to N concurrent task pipelines, each in its own worktree. The "never commit" rule is relaxed to "execute/verify workers commit to the per-task branch `BR`, the merge worker commits the merge to `integrationBranch`, the gate-remediation worker commits its fix to `integrationBranch`, **nobody ever pushes**." Merges into `integrationBranch` are serialized (one at a time); the final gate + remediation run once, post-drain, in the main tree. This is the only mode where `/pm:auto` writes git history.
 - **Final gate:** read-only on code (it may RUN the suite and write only `gate-report.md`); never flips task status. It recommends `/pm:release` only on PASS — surface gate failures verbatim from `gate-report.md`.
 - Surface failures verbatim (`## Blocker`, `## Verifier notes`, `gate-report.md`) — don't paraphrase them away.

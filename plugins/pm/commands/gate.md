@@ -15,6 +15,7 @@ Parse `$ARGUMENTS`:
 - 0 args → active-project resolution; version = `active_version`.
 - 1 arg slug → that project; version = `active_version`.
 - 2 args → slug and version (e.g. `myproj v1`).
+- An optional `--report-only` flag (anywhere in the args) → **report-only mode** (see Step 2). Used by `/pm:auto` to surface the true suite state when a run stops before every task is `done`; it never auto-passes.
 
 ## Step 1 — Resolve project and version
 
@@ -22,12 +23,10 @@ Standard active-project resolution (same as `/pm:verify` / `/pm:release`). Read 
 
 ## Step 2 — Precondition: every task is done
 
-Read every task file's frontmatter in `.pm/<slug>/<version>/tasks/`. If ANY task is not `done` (i.e. `pending`, `in-progress`, `done-pending-verify`, or `rejected`), the gate cannot pass — return immediately with:
-- `verdict: FAIL`, `suiteRan: false`, `suiteSource: 'none'`
-- one `failures[]` entry `{ kind: 'criterion', ref: '<NNN>', detail: 'task <NNN> is <status>, not done' }` per offending task
-- summary: "not all tasks are done — gate cannot pass"
+Read every task file's frontmatter in `.pm/<slug>/<version>/tasks/`. Record any task that is not `done` (i.e. `pending`, `in-progress`, `done-pending-verify`, or `rejected`) as a `failures[]` entry `{ kind: 'criterion', ref: '<NNN>', detail: 'task <NNN> is <status>, not done' }`. Then:
 
-This protects the `/pm:release` caller, which invokes the gate after its own status check.
+- **Default mode:** if any task is not `done`, the gate cannot pass — return immediately with `verdict: FAIL`, `suiteRan: false`, `suiteSource: 'none'`, those `failures[]`, and summary "not all tasks are done — gate cannot pass". This protects the `/pm:release` caller, which invokes the gate after its own status check.
+- **`--report-only` mode:** do **not** short-circuit. Keep the incomplete-task `failures[]` and **continue to Steps 3–5** — actually RUN the full suite and the holistic check so the real test/cross-cutting state is surfaced (this is the whole point of the mode: a `/pm:auto` run that stopped on a blocker/retry-cap must report whether the suite is red, not just "a task isn't done"). The verdict will still be `FAIL` (the incomplete-task criterion failures stand), but `suiteRan` and the actual `failures[]` reflect reality.
 
 ## Step 3 — Read everything (independent context)
 
@@ -41,7 +40,7 @@ Read fresh — judge the whole body of work cold:
 
 ## Step 4 — Discover and run the FULL suite
 
-Use the same precedence `/pm:verify` uses (verify.md Step 3), but run the WHOLE project, not a touched area:
+Use the same precedence `/pm:verify` uses (verify.md Step 3) to discover the canonical suite, and run the WHOLE project:
 - **If `testing.md` exists:** its **§5 CI gating** names the canonical merge-gating command(s). Run those for the whole project. Set `suiteSource: 'testing.md §5'`, `testCommand` to the command(s) you ran.
 - **Else detect** the project's test setup (the brownfield signals from `/pm:test` Step 3): `jest.config.*`, `vitest.config.*`, `pytest.ini` / `[tool.pytest]` in `pyproject.toml`, surefire/failsafe in `pom.xml`/`build.gradle`, `playwright.config.*`, `cypress.config.*`, and the test jobs in `.github/workflows/*.yml` (what already gates merges). Run the broadest sane suite — prefer the command CI runs. Set `suiteSource: 'detected'`.
 - **Else no suite found:** set `suiteRan: false`, `suiteSource: 'none'`, and record a single caveat `failures[]` entry `{ kind: 'no-suite', ref: null, detail: 'no test suite detected; tests could not be run' }`.
@@ -64,7 +63,7 @@ This is the part single-task verification cannot do. Judge the integrated whole:
 
 ## Step 6 — Verdict, report, and emit
 
-**Verdict:** `FAIL` if there is any `test`, `goal`, `criterion`, or `cross-cutting` failure; otherwise `PASS` (a lone `no-suite` caveat is still a PASS, with the caveat surfaced).
+**Verdict:** `FAIL` if there is any `test`, `goal`, `criterion`, or `cross-cutting` failure; otherwise `PASS` (a lone `no-suite` caveat is still a PASS, with the caveat surfaced). In `--report-only` mode the incomplete-task `criterion` failures from Step 2 guarantee a `FAIL` — the mode reports the true suite state, it never produces a PASS.
 
 **Write `.pm/<slug>/<version>/gate-report.md`** (a transient, overwritten-each-run artifact — NOT the frozen RELEASE.md). This is how an autonomous remediation worker, running in a fresh context, reads the failures from disk:
 
