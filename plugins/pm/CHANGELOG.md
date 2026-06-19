@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/landonia/claude-plugins/compare/pm-v1.8.0...pm-v1.9.0) (2026-06-19)
+
+
+### Features
+
+* **pm:** run full-suite gate on every /pm:auto exit; mandate canonical suite in /pm:verify ([#20](https://github.com/landonia/claude-plugins/issues/20)) ([b2e2329](https://github.com/landonia/claude-plugins/commit/b2e2329112220db8d87ea71c57d97f4c5a584db1))
+
 ## [1.8.0](https://github.com/landonia/claude-plugins/compare/pm-v1.7.1...pm-v1.8.0) (2026-06-15)
 
 
