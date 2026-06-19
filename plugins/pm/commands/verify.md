@@ -32,9 +32,15 @@ Read fresh — don't rely on memory from a prior /pm:execute session:
 6. The actual diff/changes — use `git status`, `git diff`, and `git diff --staged` to see what changed.
 7. The files listed in the Implementation summary's "Files changed" section.
 
-## Step 3 — Run tests if applicable
+## Step 3 — Run the canonical full suite
 
-If the Implementation summary specifies a test command, run it. If it doesn't but the project has an obvious test setup and the task touches testable code, run the suite anyway. Capture pass/fail. If `testing.md` exists, its §5 CI gating names the canonical merge-gating command(s) — run those for the touched area in preference to guessing.
+For any task that touches code, you **must** run the project's canonical FULL test suite — not a narrow slice of it — and capture pass/fail. Discover the command with the same precedence `/pm:gate` uses (gate.md Step 4):
+- **If `testing.md` exists:** its **§5 CI gating** names the canonical merge-gating command(s). Run those.
+- **Else detect** the project's test setup (the brownfield signals from `/pm:test` Step 3): `jest.config.*`, `vitest.config.*`, `pytest.ini` / `[tool.pytest]` in `pyproject.toml`, surefire/failsafe in `pom.xml`/`build.gradle`, `playwright.config.*`, `cypress.config.*`, and the test jobs in `.github/workflows/*.yml` (what already gates merges). Run the broadest sane suite — prefer the command CI runs.
+
+Running the suite is mandatory for code tasks: a verify with no suite run is **not** a valid ACCEPT (see Step 6). The **only** exception is a pure docs/config task with no testable surface — state that explicitly as the reason you skipped.
+
+**Do not trust the Implementation summary's claimed test results or line references.** Re-run the suite yourself and re-check every cited reference against *current* source — a task can claim "N tests pass" or cite line numbers for code that is absent or has since changed. Your verdict rests on what you observe now, not on what the summary asserts.
 
 ## Step 4 — Verify each acceptance criterion
 
@@ -61,8 +67,9 @@ Beyond the literal criteria, check:
 ## Step 6 — Decide
 
 **Verdict logic:**
-- All criteria PASS, no scope drift, tests green (if applicable) → **ACCEPT**
-- Any criterion FAIL or PARTIAL, OR scope drift, OR tests red, OR material gotchas missed → **REJECT**
+- All criteria PASS, no scope drift, full suite green → **ACCEPT**
+- Any criterion FAIL or PARTIAL, OR scope drift, OR **any** test red, OR material gotchas missed → **REJECT**
+- **Canonical suite not run on a code task** (you couldn't run it, or only ran a narrow slice) → **REJECT** — push back for evidence; never ACCEPT a code task on an un-run suite (the lone exception is a pure docs/config task with no testable surface, per Step 3).
 - Unverifiable criteria → push back to executor for evidence (REJECT with clear request).
 
 If borderline, lean toward REJECT and ask for one more pass. A rejection with concrete notes is cheap; a false accept compounds.
