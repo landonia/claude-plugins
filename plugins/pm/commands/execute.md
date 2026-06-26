@@ -23,19 +23,50 @@ Same active-project resolution. Read `active_version` from prd.md frontmatter.
 **Auto-pick (next ready) algorithm:**
 1. List all task files in `.pm/<slug>/<active_version>/tasks/` sorted by id ascending.
 2. A task is "ready" if its `status` is `pending` or `rejected`, AND every id in its `depends_on` has status `done`.
-3. Pick the lowest-id ready task. If none, tell the user: "No ready tasks. Check `/pm:status <slug>`."
+3. Run **Claim discovery** (Step 1.4) and drop any ready task that is **actively claimed by someone else** (`heldByOther`). Pick the lowest-id surviving ready task. If ready tasks remain but ALL are claimed by others, tell the user that and list each task's owner (`/pm:next <slug>` shows the same). If none are ready at all: "No ready tasks. Check `/pm:status <slug>`."
 
 **Explicit task id:**
 - If the requested task's `depends_on` includes a task that isn't `done`, WARN the user and ask whether to proceed anyway (they may have a reason). Default: no.
 - If the task is already `in-progress`, `done-pending-verify`, or `done`, ask the user whether they want to redo it. Default: no.
 
+## Step 1.4 — Claim discovery (branch-aware) — CANONICAL
+
+A claim lives on its task branch, not on your current branch: `/pm:claim` writes
+`assignee`/`status: in-progress`/`branch`/`claimed_at` into the task frontmatter on branch
+`pm/<slug>/<NNN>-<task-slug>` and pushes **only that branch** — the branch IS the lock. So the
+working-tree task files you just read do NOT reflect teammates' claims. Discover them from the
+branches. **This is the canonical copy; `/pm:next`, `/pm:claim`, and `/pm:status` reference it —
+keep them in sync.**
+
+Build `claimsByStem` (task-file-stem → `{ taskId, assignee, branch, claimed_at, jira_key, branchStatus }`):
+
+1. **Refresh claim refs (graceful).** If `git remote get-url origin` succeeds, run a scoped fetch:
+   `git fetch --prune origin "+refs/heads/pm/<slug>/*:refs/remotes/origin/pm/<slug>/*"`. If there
+   is no remote, or the fetch fails (offline), **skip discovery** and fall back to the
+   working-tree `assignee` field as before, printing one note: `claim discovery skipped — couldn't reach origin`. (This fetch only updates remote-tracking refs; it writes nothing to the tree.)
+2. **Enumerate** claim branches: `git branch -r --list "origin/pm/<slug>/*"` plus local
+   `git branch --list "pm/<slug>/*"`.
+3. **Match to the active version.** A branch's last path segment is the task-file stem
+   `<NNN>-<task-slug>`. Keep only branches whose stem matches an actual file in
+   `.pm/<slug>/<active_version>/tasks/<stem>.md` — match the FULL stem (ids can repeat across versions).
+4. **Read the claim record from the branch:** `git show <ref>:.pm/<slug>/<active_version>/tasks/<stem>.md`
+   and parse its frontmatter `assignee`, `branch`, `claimed_at`, `jira_key`, `pr_url`, and `status`
+   (→ `branchStatus`). If a stem has both a remote and a local ref, prefer the **remote** (the
+   pushed, team-visible truth).
+5. **Liveness.** Keep a claim as **active** only if the task is still outstanding — DROP it when
+   your local task `status` is `done`/`done-pending-verify`, or the branch record shows a `pr_url`
+   with `branchStatus: done` (claim branches persist after `/pm:complete`, so stale branches must
+   not read as live claims).
+6. **Ownership.** `me = git config user.email`. `heldByOther(claim)` ⇔ the claim's assignee email
+   ≠ `me` (case-insensitive). A claim whose assignee is `me` is yours (resume it, don't re-pick it).
+
 ## Step 1.5 — Honor existing claims (multi-dev)
 
-Read the task's `assignee` frontmatter field.
+Look up this task's stem in `claimsByStem` (Step 1.4); if discovery was skipped, fall back to the task's local `assignee` frontmatter field.
 
-- If `assignee` is empty → proceed normally.
-- If `assignee` matches the current `git config user.name` + `user.email` → proceed (you own this).
-- If `assignee` is set to someone else AND `--force` was NOT passed → WARN clearly:
+- If there is no active claim → proceed normally.
+- If the claim's `assignee` matches the current `git config user.name` + `user.email` → proceed (you own this).
+- If the task is claimed by someone else AND `--force` was NOT passed → WARN clearly:
   ```
   Task <NNN> is claimed by <assignee> (since <claimed_at>) on branch <branch>.
   Running /pm:execute on someone else's task can produce duplicate work and merge conflicts.

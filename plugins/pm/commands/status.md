@@ -25,13 +25,14 @@ Read:
   - Count of research files in `research/` (excluding `_index.md` and `.archive/`).
   - Task counts in `tasks/` by status: pending / in-progress / done-pending-verify / done / rejected.
   - Sum the `complexity` points across tasks: total points, done points (status `done`), and remaining (total − done). Treat a task with an absent or empty `complexity` as **unscored** — count it toward the task count but not the point totals, and track how many are unscored.
-- For the **active version**, also collect each task's `assignee`, `branch`, `claimed_at`, `jira_key`, and `pr_url` fields where present.
+- For the **active version**, also collect each task's `jira_key` and `pr_url` fields where present.
+- For the **active version**, run **Claim discovery** to learn who holds what — claims live on `pm/<slug>/<NNN>-...` branches, NOT in the working-tree task files, so reading `assignee` from the current branch misses every teammate's claim. Perform the procedure defined in `${CLAUDE_PLUGIN_ROOT}/commands/execute.md` Step 1.4 (keep in sync) to build `claimsByStem` (`assignee`/`branch`/`claimed_at`/`jira_key` per actively-claimed task). If discovery is skipped (no remote / offline), fall back to the working-tree `assignee`/`branch`/`claimed_at` fields and note `claim discovery skipped — couldn't reach origin`.
 - For the **active version's** `goals.md`, also read `jira_epic` if present.
 - For the **active version**, check `architecture.md`: if present, read its frontmatter `status` field (drafted/locked/superseded) and `inherited_from` if set.
 - For the **active version**, check `testing.md` the same way: frontmatter `status` and `inherited_from` if present.
 - Detect Jira enablement: `.pm/<slug>/.jira.yml` exists. If yes, read `site` from it (for building Jira URLs in output).
 
-Compute "next ready task" for the active version: lowest-id task with status `pending` or `rejected` whose deps are all `done`.
+Compute "next ready task" for the active version: lowest-id task with status `pending` or `rejected` whose deps are all `done` **and which is not actively claimed by someone else** (per `claimsByStem`). If every ready task is claimed by others, say so in the dashboard rather than recommending a claimed one.
 
 Count amendments in `prd.md` `## Amendments` section.
 
@@ -58,7 +59,7 @@ Active version detail (v2):
              task 007 (pending) blocked by 005
   Jira:      enabled — site company.atlassian.net   epic PROJ-100 (In Progress)
 
-In-progress / claimed tasks:
+In-progress / claimed tasks:   (from claim branches — see Step 2 Claim discovery)
   ID   Title                          Assignee              Branch                         Claimed     Jira
   004  Add billing webhook handler    Alice <a@example.com> pm/<slug>/004-billing-webhook  2026-05-22  PROJ-123
 
@@ -67,7 +68,7 @@ Suggested next command: /pm:claim <slug>   (then /pm:execute)
 ```
 
 Conditional sections:
-- If no tasks have assignees set, omit the "In-progress / claimed tasks" section entirely. If the user is solo (only one assignee value appears across all tasks, matching git config user), still show the section — it's useful for the user to see their own claims.
+- The "In-progress / claimed tasks" section is populated from `claimsByStem` (active claims discovered on branches), one row per active claim. Omit the section entirely if there are no active claims (and, on a discovery-skipped fallback, no working-tree `assignee` is set). If the user is solo (their own claim is the only one), still show it — it's useful to see your own claims.
 - The `Architecture:` line in "Active version detail" appears ONLY if `architecture.md` exists in the active version folder. Format: `<status>[ (inherited from <prior>)] — see .pm/<slug>/<version>/architecture.md`. If the file is missing, omit the line entirely.
 - The `Testing:` line follows the same rule for `testing.md` — present only if the file exists; omit otherwise. Do not suggest `/pm:test` in the next-step hints (it's optional).
 - The `Complexity:` line shows total / done / remaining points and average per scored task. If some tasks are unscored, append `(N unscored)`. If NO task in the active version has a `complexity` value, omit the line and drop the `(P/T pts)` figure from the per-version summary — don't show zeroed totals for a project that predates scoring.
