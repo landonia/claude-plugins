@@ -24,7 +24,7 @@ Standard active-project resolution. Read `active_version` from prd.md frontmatte
 **Auto-pick next ready task:**
 1. List task files in `.pm/<slug>/<active_version>/tasks/` sorted by id ascending.
 2. A task is "ready" if status is `pending` or `rejected` AND every `depends_on` id has status `done`.
-3. Pick the lowest-id ready task. If none, tell the user and stop.
+3. Run **Claim discovery** (`${CLAUDE_PLUGIN_ROOT}/commands/execute.md` Step 1.4 — keep in sync) and drop ready tasks **actively claimed by someone else**. Pick the lowest-id surviving ready task. If none survive (all ready tasks are claimed by others), tell the user, list each task's owner, and stop. (The Step 2.5 pull already fetches `origin`; discovery's scoped `pm/<slug>/*` fetch complements it.)
 
 **Explicit id:**
 - If the task's `depends_on` includes a task not `done`, warn and ask before proceeding.
@@ -40,14 +40,13 @@ Run these in parallel and gather results before doing anything destructive:
 4. **Remote exists.** `git remote get-url origin` must succeed. Refuse if no remote — there's no team to make the claim visible to.
 5. **Pull latest** of the base branch (typically `main`) before reading task state. This is critical — claims race on stale state. Use `git fetch origin && git merge --ff-only origin/main` (or current base), and if FF-only fails, refuse and tell the user to resolve the divergence first.
 
-## Step 3 — Re-read task state from the freshly pulled tree
+## Step 3 — Re-read claim state (branch-aware)
 
-After pulling, re-read the task file. The state may have changed since the user invoked the command (someone else may have claimed it).
+After pulling, re-check who holds this task. The claim is NOT on your current branch — it lives on the claimer's `pm/<slug>/<NNN>-...` branch (the branch is the lock). So run **Claim discovery** (`${CLAUDE_PLUGIN_ROOT}/commands/execute.md` Step 1.4 — keep in sync) and look this task's stem up in `claimsByStem`; also read the local task file's `assignee` as a fallback when discovery was skipped (offline).
 
-Check the task's `assignee` frontmatter field:
-- **Empty / missing** → proceed.
-- **Set, matches current git user** → idempotent, tell the user they already own this task, then re-confirm/refresh branch state (skip to Step 5 with the existing branch).
-- **Set, different from current user** → REFUSE unless `--force` was passed. Message:
+- **No active claim** → proceed.
+- **Claimed, matches current git user** → idempotent, tell the user they already own this task, then re-confirm/refresh branch state (skip to Step 5 with the existing branch).
+- **Claimed by someone else** → REFUSE up front (before creating any branch) unless `--force` was passed. This is the clean, early message — don't rely on the Step 6 push collision to surface it. Message:
   ```
   Task <NNN> is already claimed by <assignee> (since <claimed_at>).
   Branch: <branch>
