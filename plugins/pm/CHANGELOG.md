@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/landonia/claude-plugins/compare/pm-v1.9.0...pm-v1.9.1) (2026-06-26)
+
+
+### Bug Fixes
+
+* **pm:** make claim detection branch-aware in status/next/claim/execute ([#22](https://github.com/landonia/claude-plugins/issues/22)) ([ffd26f1](https://github.com/landonia/claude-plugins/commit/ffd26f16cd3cf90fee10964b654d6a7b5bacca6f))
+
 ## [1.9.0](https://github.com/landonia/claude-plugins/compare/pm-v1.8.0...pm-v1.9.0) (2026-06-19)
 
 
